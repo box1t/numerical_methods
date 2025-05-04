@@ -35,6 +35,7 @@ fs = [getValue(as_, x) for x in xs]
 error = sum([(fs[i] - ys[i]) ** 2 for i in range(N)])
 print(f"Сумма квадратов ошибок: {np.round(error, 4)}")
 
+plt.figure(figsize=(10, 6))
 plt.plot(xs, ys, linestyle='-', color=(1, 0, 0), label=f"Функция")
 plt.plot(xs, fs, linestyle='-', color=(0, 0, 1), label=f"Приближение")
 plt.legend()

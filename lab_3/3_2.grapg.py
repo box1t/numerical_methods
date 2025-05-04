@@ -2,6 +2,9 @@ import numpy as np
 from copy import copy
 import matplotlib.pyplot as plt
 
+# как убрать автоподсчет после ctrl-v
+# как сохранять png в требуемую папку, а не в корень?
+
 countPoints = int(1e3)
 
 def tridiagonalMatrixAlgorithm(A, b):
@@ -77,10 +80,11 @@ fs = [float(i) for i in input().split(" ")]
 x = np.linspace(xs[0], xs[-1], countPoints)
 y = [spline(xs, fs, curX) for curX in x]
 
+plt.figure(figsize=(10, 6))
 plt.plot(xs, fs, linestyle='-', color=(1, 0, 0), label=f"Функция")
 plt.plot(x, y, linestyle='-', color=(0, 0, 1), label=f"Приближение")
 
 plt.legend()
 
 plt.grid(True)
-plt.show()
+plt.savefig('3_2.png')
