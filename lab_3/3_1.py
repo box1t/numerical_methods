@@ -46,7 +46,6 @@ def lagrange(xs, x_eval):
             res += term
         else:
             res += term
-
     return res
 
 
@@ -77,17 +76,15 @@ def newton(xs, x_eval):
         for i in range(1, n):
             polynom *= (x_eval - xs[i-1])
             res += div_diffs[i] * polynom
-
     return res
 
 def error_bound(xs, x):
-    N = len(xs) # Количество узлов
-    n = N - 1 # Степень многочлена
+    N = len(xs) 
+    n = N - 1 
 
     if N == 0:
         return 0.0 
 
-    # omega_N(x) = prod_{i=0}^{N-1} (x - x_i)
     omega_N = 1.0
     for xi in xs:
         omega_N *= (x - xi)

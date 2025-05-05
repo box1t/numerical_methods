@@ -1,4 +1,15 @@
-import numpy as np 
+import numpy as np
+
+def check_constant_step(xs, tolerance=1e-9):
+    if len(xs) < 2:
+        return True
+    steps = np.diff(xs)
+    if len(steps) < 2:
+        return True
+    first_step = steps[0]
+    if not np.allclose(steps, first_step, atol=tolerance):
+        return False
+    return True
 
 def getIndex(x, xs):
     if not isinstance(xs, (list, tuple, np.ndarray)):
@@ -11,182 +22,108 @@ def getIndex(x, xs):
              raise ValueError("xs содержит одинаковые или неупорядоченные точки. Точки должны быть строго возрастающими.")
          else:
              raise ValueError("xs должен быть строго отсортирован по возрастанию.")
+
     if x < xs[0] or x > xs[n - 1]:
         raise ValueError(f"Точка x ({x}) находится вне диапазона данных [{xs[0]}, {xs[n-1]}].")
-    for i in range(n - 1):
-        if xs[i] <= x <= xs[i + 1]:
-            # Специальный случай: если x == xs[i+1] и i+1 < n-1,
-            # то x является левой границей следующего интервала.
-            # Для согласованности, если x совпадает с точкой из xs,
-            # мы должны выбрать интервал, который начинается с этой точки,
-            # за исключением самого последнего элемента xs[-1].
-            # В данном случае, т.к. формула производной использует точки i, i+1, i+2,
-            # нам нужно, чтобы i+2 < n. Это означает, что i <= n-3.
-            # Если x == xs[i+1] и i+1 <= n-3 (т.е. i <= n-4),
-            # то правильный интервал будет [xs[i+1], xs[i+2]], а индекс будет i+1.
-            # НО! Исходная логика `x <= xs[i]` в цикле от 1
-            # приводила к тому, что при `x == xs[k]`, возвращался `k-1`.
-            # Давайте придерживаться логики, которая найдет интервал `[xs[i], xs[i+1]]`
-            # куда попадает x. Если x совпадает с xs[i], это начало интервала.
-            # Если x совпадает с xs[i+1], это конец интервала.
-            # Наша цель - найти i такое, что xs[i] <= x <= xs[i+1].
 
-            # Простой цикл:
-            if x == xs[i+1] and i+1 < n-1:
-                 # Если x совпало с правой границей, и это не последняя точка данных,
-                 # логически мы находимся на границе двух интервалов.
-                 # Выбор интервала может зависеть от дальнейшей формулы.
-                 # Ваша формула требует i, i+1, i+2. Если мы выберем i такое, что x=xs[i+1],
-                 # то для следующего шага i+1,i+2,i+3 потребуются точки.
-                 # Исходная логика `x <= xs[i]` возвращала `i-1`. Если x = xs[k],
-                 # цикл доходил до i=k, проверял `x <= xs[k]` (True), возвращал k-1.
-                 # Давайте воспроизведем это поведение для точек, совпадающих с xs[i] (i > 0)
-                 # и xs[i+1] (i+1 < n-1).
-                 pass # Оставляем текущий i, т.к. xs[i] <= x <= xs[i+1] уже выполнено.
-            # Иначе просто возвращаем i
-            return i
+    if isinstance(xs, np.ndarray):
+        j = np.searchsorted(xs, x, side='right') - 1
+        if x == xs[j] and j > 0:
+             return j - 1
+        if j < n - 1:
+             return j
+        if x == xs[n-1]:
+            return n - 2
+    else:
+        for i in range(n - 1):
+            if xs[i] <= x <= xs[i + 1]:
+                 return i
 
-    # Если x совпадает с последней точкой xs[-1], цикл выше не вернет индекс.
-    # Мы уже проверили x <= xs[n-1], так что если дошли сюда, x == xs[n-1].
-    # В этом случае нам нужен последний интервал [xs[n-2], xs[n-1]], индекс которого n-2.
-    if x == xs[n-1]:
-        return n - 2
+        if x == xs[n-1]:
+            return n - 2
 
-    # По идее сюда попадать не должны, т.к. проверили на выход за границы.
-    # Если xs[i] < x < xs[i+1] не найдено, возможно есть проблема с сортировкой,
-    # которая не была поймана первой проверкой (например, float issues),
-    # или что-то очень странное. Поднимем ошибку на всякий случай.
-    # Однако, при корректных отсортированных данных и x в диапазоне, одно из условий выше должно быть истинно.
-    raise RuntimeError(f"Не удалось найти интервал для x={x}. Проверьте данные xs.") # По идее, эта ошибка не должна возникать при правильных входных данных
+    raise RuntimeError(f"Не удалось найти интервал для x={x}. Проверьте данные xs.")
 
 def firstDerivative(x, xs, ys):
-    """
-    Вычисляет первую производную методом, основанным на производной
-    квадратичного интерполяционного полинома по точкам xs[i], xs[i+1], xs[i+2].
-    Applicable только для x в интервале [xs[i], xs[i+1]], где i+2 < len(xs).
-
-    Args:
-        x: Точка, в которой вычисляется производная.
-        xs: Список или массив значений x, отсортированный по возрастанию.
-        ys: Список или массив значений y, соответствующих xs.
-
-    Returns:
-        Значение первой производной в точке x.
-
-    Raises:
-        ValueError: Если данные некорректны (длина, сортировка, совпадение точек),
-                    или если x находится вне применимого диапазона для данной формулы.
-        ZeroDivisionError: Если в xs есть одинаковые соседние точки.
-    """
     if len(xs) != len(ys):
         raise ValueError("Длины списков xs и ys должны совпадать.")
 
-    # getIndex выполнит большинство проверок на xs
+    is_constant_step = check_constant_step(xs)
+    if not is_constant_step:
+        print("Внимание: Точки xs не имеют постоянного шага. "
+              "Порядок точности формул может отличаться от ожидаемого O(h^2).")
+
     i = getIndex(x, xs)
 
-    # Проверка применимости формулы: требуется доступ к xs[i+2] и ys[i+2]
     if i + 2 >= len(xs):
-        # Ваша формула требует 3 точки: xs[i], xs[i+1], xs[i+2].
-        # getIndex находит i такое, что x в [xs[i], xs[i+1]].
-        # Следовательно, для применения формулы i может быть максимум len(xs) - 3.
-        # Это означает, что x может находиться только в интервалах
-        # [xs[0], xs[1]], [xs[1], xs[2]], ..., [xs[len(xs)-3], xs[len(xs)-2]].
-        # То есть, x должно быть меньше или равно xs[len(xs)-2].
         raise ValueError(f"Недостаточно точек для вычисления производной в x={x} "
-                         f"с использованием данной формулы (требуется xs[i+2]). "
-                         f"x должно быть в диапазоне [{xs[0]}, {xs[len(xs)-2]}] для данной формулы.")
+                         f"с использованием данной формулы (требуются xs[i], xs[i+1], xs[i+2]). "
+                         f"Данная формула применима только для x в диапазоне [{xs[0]}, {xs[len(xs)-2]}].")
 
-    # Проверка на деление на ноль (разные точки в xs[i], xs[i+1], xs[i+2])
-    # Частично покрывается проверкой на сортировку в getIndex для соседних точек.
-    # Дополнительно проверим разность xs[i+2] - xs[i].
-    if xs[i+1] - xs[i] == 0 or xs[i+2] - xs[i+1] == 0 or xs[i+2] - xs[i] == 0:
-         # Эта ситуация должна быть поймана проверкой сортировки/уникальности в getIndex,
-         # но для надежности оставим явную проверку здесь.
-         raise ZeroDivisionError(f"Обнаружены одинаковые точки в xs[{i}], xs[{i+1}] или xs[{i+2}].")
-
-    # Для читаемости разобьем формулу
     h1 = xs[i+1] - xs[i]
     h2 = xs[i+2] - xs[i+1]
-    h_total = xs[i+2] - xs[i] # Это h1 + h2
+    denom_total = xs[i+2] - xs[i]
 
-    # Разделенные разности первого порядка
+    if h1 == 0 or h2 == 0 or denom_total == 0:
+         raise ZeroDivisionError(f"Обнаружены одинаковые точки в xs[{i}], xs[{i+1}] или xs[{i+2}], "
+                                 f"приводящие к делению на ноль.")
+
     div_diff1 = (ys[i+1] - ys[i]) / h1
     div_diff2 = (ys[i+2] - ys[i+1]) / h2
+    total_div_diff = (div_diff2 - div_diff1) / denom_total
 
-    # Разделенная разность второго порядка
-    div_diff_second_order = (div_diff2 - div_diff1) / h_total
-
-    # Формула для P'(x) = [x_i, x_{i+1}] + [x_i, x_{i+1}, x_{i+2}] * (2x - x_i - x_{i+1})
-    derivative = div_diff1 + div_diff_second_order * (2 * x - xs[i] - xs[i+1])
+    derivative = div_diff1 + total_div_diff * (2 * x - xs[i] - xs[i+1])
 
     return derivative
 
 def secondDerivative(x, xs, ys):
-    """
-    Вычисляет вторую производную методом, основанным на производной
-    квадратичного интерполяционного полинома по точкам xs[i], xs[i+1], xs[i+2].
-    Applicable только для x в интервале [xs[i], xs[i+1]], где i+2 < len(xs).
-    Значение второй производной квадратичного полинома постоянно.
-
-    Args:
-        x: Точка, в которой вычисляется производная (значение производной
-           постоянно в пределах интервала [xs[i], xs[i+1]]).
-        xs: Список или массив значений x, отсортированный по возрастанию.
-        ys: Список или массив значений y, соответствующих xs.
-
-    Returns:
-        Значение второй производной в точке x.
-
-    Raises:
-        ValueError: Если данные некорректны (длина, сортировка, совпадение точек),
-                    или если x находится вне применимого диапазона для данной формулы.
-        ZeroDivisionError: Если в xs есть одинаковые соседние точки.
-    """
     if len(xs) != len(ys):
         raise ValueError("Длины списков xs и ys должны совпадать.")
 
-    # getIndex выполнит большинство проверок на xs
+    is_constant_step = check_constant_step(xs)
+    if not is_constant_step:
+        print("Внимание: Точки xs не имеют постоянного шага. "
+              "Порядок точности формул может отличаться от ожидаемого O(h^2).")
+
     i = getIndex(x, xs)
 
-    # Проверка применимости формулы: требуется доступ к xs[i+2] и ys[i+2]
     if i + 2 >= len(xs):
-         # Ваша формула требует 3 точки: xs[i], xs[i+1], xs[i+2].
-        # getIndex находит i такое, что x в [xs[i], xs[i+1]].
-        # Следовательно, для применения формулы i может быть максимум len(xs) - 3.
-        # Это означает, что x может находиться только в интервалах
-        # [xs[0], xs[1]], [xs[1], xs[2]], ..., [xs[len(xs)-3], xs[len(xs)-2]].
-        # То есть, x должно быть меньше или равно xs[len(xs)-2].
         raise ValueError(f"Недостаточно точек для вычисления второй производной в x={x} "
-                         f"с использованием данной формулы (требуется xs[i+2]). "
-                         f"x должно быть в диапазоне [{xs[0]}, {xs[len(xs)-2]}] для данной формулы.")
+                         f"с использованием данной формулы (требуются xs[i], xs[i+1], xs[i+2]). "
+                         f"Данная формула применима только для x в диапазоне [{xs[0]}, {xs[len(xs)-2]}].")
 
-    # Проверка на деление на ноль (разные точки в xs[i], xs[i+1], xs[i+2])
-    if xs[i+1] - xs[i] == 0 or xs[i+2] - xs[i+1] == 0 or xs[i+2] - xs[i] == 0:
-         raise ZeroDivisionError(f"Обнаружены одинаковые точки в xs[{i}], xs[{i+1}] или xs[{i+2}].")
-
-    # Для читаемости разобьем формулу
     h1 = xs[i+1] - xs[i]
     h2 = xs[i+2] - xs[i+1]
-    h_total = xs[i+2] - xs[i] # Это h1 + h2
+    denom_total = xs[i+2] - xs[i]
 
-    # Разделенные разности первого порядка
+    if h1 == 0 or h2 == 0 or denom_total == 0:
+         raise ZeroDivisionError(f"Обнаружены одинаковые точки в xs[{i}], xs[{i+1}] или xs[{i+2}], "
+                                 f"приводящие к делению на ноль.")
+
     div_diff1 = (ys[i+1] - ys[i]) / h1
     div_diff2 = (ys[i+2] - ys[i+1]) / h2
+    total_div_diff = (div_diff2 - div_diff1) / denom_total
 
-    # Разделенная разность второго порядка
-    div_diff_second_order = (div_diff2 - div_diff1) / h_total
-
-    # Формула для P''(x) = 2 * [x_i, x_{i+1}, x_{i+2}]
-    derivative = 2 * div_diff_second_order
+    derivative = 2 * total_div_diff
 
     return derivative
 
-# Пример использования с проверками:
+## ---- ПРИМЕРЫ ---- 
+
 x = 0.2
-xs = [-0.2, 0.0, 0.2, 0.4, 0.6]
-ys = [-0.40136, 0.0, 0.40136, 0.81152, 1.2435]
+xs = np.array([-0.2, 0.0, 0.2, 0.4, 0.6])
+ys = np.array([-0.40136, 0.0, 0.40136, 0.81152, 1.2435])
+
+print(f"Набор данных xs: {xs}")
+print(f"Набор данных ys: {ys}")
+
+if check_constant_step(xs):
+    print("\nПроверка шага: Точки xs имеют постоянный шаг.")
+else:
+    print("\nПроверка шага: Внимание, точки xs не имеют постоянного шага!") 
 
 try:
+    print(f"\nВычисление производных в точке x = {x}")
     print(f"Первая производная в точке {x}: {firstDerivative(x, xs, ys)}")
     print(f"Вторая производная в точке {x}: {secondDerivative(x, xs, ys)}")
 except ValueError as e:
@@ -196,25 +133,45 @@ except ZeroDivisionError as e:
 except Exception as e:
     print(f"Неожиданная ошибка: {e}")
 
-print("-" * 20)
+print("\n" + "=" * 40 + "\n")
 
-# Пример с другой точкой (на границе применимости формулы)
-x_boundary = 0.4 # Это xs[3]. i = getIndex(0.4, xs) вернет 2, т.к. 0.2 <= 0.4 <= 0.4
-                 # Для i=2, требуются xs[2], xs[3], xs[4]. indices 2, 3, 4 < len(xs)=5. Это работает.
+x_boundary_explanation = 0.4
+n_explanation = len(xs)
+max_i_explanation = n_explanation - 3
+applicable_range_end = xs[n_explanation - 2]
+
+print(f"Точка x = {x_boundary_explanation}")
+print(f"Всего точек в xs: n = {n_explanation}")
+print(f"Формулы используют точки xs[i], xs[i+1], xs[i+2].")
+print(f"Для этого необходимо, чтобы i+2 < n, т.е. i <= n-3.")
+print(f"Максимальный допустимый индекс i для данной формулы: n-3 = {max_i_explanation}")
+print(f"Последний интервал [xs[i], xs[i+1]] с i <= {max_i_explanation} это [xs[{max_i_explanation}], xs[{max_i_explanation+1}]] = [{xs[max_i_explanation]}, {xs[max_i_explanation+1]}]")
+print(f"Таким образом, данная формула применима для x в диапазоне [{xs[0]}, {applicable_range_end}].")
+print(f"Точка x = {x_boundary_explanation} ({applicable_range_end}) является правой границей этого диапазона применимости.")
 try:
-    print(f"Первая производная в точке {x_boundary}: {firstDerivative(x_boundary, xs, ys)}")
-    print(f"Вторая производная в точке {x_boundary}: {secondDerivative(x_boundary, xs, ys)}")
+    i_boundary = getIndex(x_boundary_explanation, xs)
+    points_used = xs[i_boundary : i_boundary + 3]
+    print(f"Для x = {x_boundary_explanation}, getIndex вернул i = {i_boundary}.")
+    print(f"Используются точки xs[{i_boundary}], xs[{i_boundary+1}], xs[{i_boundary+2}], т.е. {points_used}.")
+
+    print(f"\nВычисление производных в граничной точке x = {x_boundary_explanation}")
+    print(f"Первая производная в точке {x_boundary_explanation}: {firstDerivative(x_boundary_explanation, xs, ys)}")
+    print(f"Вторая производная в точке {x_boundary_explanation}: {secondDerivative(x_boundary_explanation, xs, ys)}")
 except ValueError as e:
     print(f"Ошибка при вычислении: {e}")
 except ZeroDivisionError as e:
     print(f"Ошибка при вычислении (деление на ноль): {e}")
 
+print("\n" + "=" * 40 + "\n")
 
-print("-" * 20)
+# Объяснение про порядок точности
+print(f"Порядок точности O(h^2) в центральной точке для первой и второй производной")
+print(f"Порядок точности O(h) в точках отрезка и на границах для первой и второй производной")
 
-# Пример точки вне применимого диапазона для *этих* формул
-x_out_of_formula_range = 0.5 # getIndex(0.5, xs) вернет i=3 (0.4 <= 0.5 <= 0.6).
-                             # Для i=3 требуются xs[3], xs[4], xs[5]. xs[5] не существует.
+print("\n" + "=" * 40 + "\n")
+
+x_out_of_formula_range = 0.5
+print(f"Пример точки x = {x_out_of_formula_range} вне диапазона применимости формулы [{xs[0]}, {applicable_range_end}]:")
 try:
     print(f"Первая производная в точке {x_out_of_formula_range}: {firstDerivative(x_out_of_formula_range, xs, ys)}")
     print(f"Вторая производная в точке {x_out_of_formula_range}: {secondDerivative(x_out_of_formula_range, xs, ys)}")
@@ -223,10 +180,10 @@ except ValueError as e:
 except ZeroDivisionError as e:
     print(f"Ошибка при вычислении (деление на ноль): {e}")
 
-print("-" * 20)
+print("\n" + "=" * 40 + "\n")
 
-# Пример точки вне общего диапазона данных
 x_out_of_data_range = 1.0
+print(f"Пример точки x = {x_out_of_data_range} вне диапазона данных [{xs[0]}, {xs[-1]}]:")
 try:
     print(f"Первая производная в точке {x_out_of_data_range}: {firstDerivative(x_out_of_data_range, xs, ys)}")
     print(f"Вторая производная в точке {x_out_of_data_range}: {secondDerivative(x_out_of_data_range, xs, ys)}")
@@ -235,13 +192,28 @@ except ValueError as e:
 except ZeroDivisionError as e:
     print(f"Ошибка при вычислении (деление на ноль): {e}")
 
-print("-" * 20)
+print("\n" + "=" * 40 + "\n")
 
-# Пример с недостаточным количеством точек
+print(f"Пример с недостаточным количеством точек для формулы:")
 xs_short = [0.0, 0.1]
 ys_short = [1.0, 1.1]
 x_short = 0.05
 try:
-     print(f"Первая производная в точке {x_short}: {firstDerivative(x_short, xs_short, ys_short)}")
+     print(f"Первая производная в точке {x_short} с данными xs={xs_short}, ys={ys_short}:")
+     print(f"{firstDerivative(x_short, xs_short, ys_short)}")
 except ValueError as e:
      print(f"Ошибка при вычислении: {e}")
+
+print("\n" + "=" * 40 + "\n")
+
+print(f"Пример с неравномерным шагом (выдаст предупреждение):")
+xs_uneven = [0.0, 0.1, 0.3, 0.4]
+ys_uneven = [0.0, 0.1, 0.9, 1.6]
+x_uneven = 0.15
+try:
+    print(f"Первая производная в точке {x_uneven} с данными xs={xs_uneven}, ys={ys_uneven}:")
+    print(f"{firstDerivative(x_uneven, xs_uneven, ys_uneven)}")
+except ValueError as e:
+    print(f"Ошибка при вычислении: {e}")
+except ZeroDivisionError as e:
+    print(f"Ошибка при вычислении (деление на ноль): {e}") 
