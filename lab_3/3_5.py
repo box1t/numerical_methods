@@ -7,7 +7,6 @@ def f(x):
         raise ValueError(f"Знаменатель функции f(x) равен нулю при x = {x}")
     return 1 / denominator
 
-# откуда возникла эта функция
 def splitting(x0, xk, h):
     if h <= 0:
         raise ValueError("Шаг h должен быть положительным числом.")
