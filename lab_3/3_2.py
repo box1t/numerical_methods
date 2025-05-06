@@ -245,7 +245,7 @@ if spline_coeffs is not None:
         y_plot.append(y_val)
 
     plt.figure(figsize=(10, 6))
-    plt.plot(xs_np, fs_np, 'o-', color=(1, 0, 0), label="Исходные точки")
+    plt.plot(xs_np, fs_np, 'o', color=(1, 0, 0), label="Исходные точки")
 
     plt.plot(x_plot, y_plot, linestyle='-', color=(0, 0, 1), label="Приближение сплайном")
 
@@ -261,7 +261,7 @@ elif n_points >= 2:
     print(f"Недостаточно точек ({n_points}) для построения кубического сплайна.")
     print("На график будут нанесены только исходные точки.")
     plt.figure(figsize=(10, 6))
-    plt.plot(xs_np, fs_np, 'o-', color=(1, 0, 0), label="Исходные точки")
+    plt.plot(xs_np, fs_np, 'o', color=(1, 0, 0), label="Исходные точки")
     plt.legend()
     plt.grid(True)
     plt.title("Исходные точки")

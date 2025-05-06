@@ -19,6 +19,7 @@ n = degree_input + 1
 
 xs = np.array([-3, -2, -1, 0, 1, 2])
 ys = np.array([-2.9502, -1.8647, -0.63212, 1.0, 3.7183, 9.3891])
+#ys = np.array([-2.9502, -1.8647, 1.63212, -2.0, -3.7183, -9.3891])
 N = len(xs) 
 
 if len(set(xs)) != N: 
@@ -67,9 +68,9 @@ print(f"Сумма квадратов ошибок: {np.round(error, 6)}")
 
 plt.figure(figsize=(10, 6))
 
-plt.plot(xs, ys, linestyle='-', color=(1, 0, 0), label=f"Функция")
+plt.plot(xs, ys, 'o', color=(1, 0, 0), label=f"Функция")
 
-plt.plot(xs, fs, linestyle='-', color=(0, 0, 1), label=f"Приближение")
+plt.plot(xs, fs, 'o-', color=(0, 0, 1), label=f"Приближение")
 
 plt.xlabel("x")
 plt.ylabel("y")
