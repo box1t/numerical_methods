@@ -2,40 +2,45 @@ import numpy as np
 from copy import copy
 import matplotlib.pyplot as plt
 import sys
+import os 
+from ..lab_1.progonka_lab import progonka
 
 countPoints = int(1e3)
 tolerance = 1e-9
+print("Текущий sys.path:")
+for p in sys.path:
+    print(f"  {p}")
+    
+# def progonka(A, b):
+#     n = len(b)
+#     if A.shape[0] != n or A.shape[1] != 3:
+#         print("Ошибка в progonka: Неверные размеры матрицы A.")
+#         return None
 
-def progonka(A, b):
-    n = len(b)
-    if A.shape[0] != n or A.shape[1] != 3:
-        print("Ошибка в progonka: Неверные размеры матрицы A.")
-        return None
+#     P = np.empty((n))
+#     Q = np.empty((n))
+#     x = np.empty((n))
 
-    P = np.empty((n))
-    Q = np.empty((n))
-    x = np.empty((n))
+#     if A[0][1] == 0:
+#          print("Ошибка в progonka: Деление на ноль при расчете P[0]. Главный диагональный элемент равен нулю.")
+#          return None
+#     P[0] = -A[0][2] / A[0][1]
+#     Q[0] = b[0] / A[0][1]
 
-    if A[0][1] == 0:
-         print("Ошибка в progonka: Деление на ноль при расчете P[0]. Главный диагональный элемент равен нулю.")
-         return None
-    P[0] = -A[0][2] / A[0][1]
-    Q[0] = b[0] / A[0][1]
+#     for i in range(1, n):
+#         denominator = A[i][1] + A[i][0] * P[i-1]
+#         if abs(denominator) < tolerance:
+#              print(f"Ошибка в progonka: Деление на ноль на шаге прямого хода {i}. Знаменатель близок к нулю.")
+#              return None
+#         if i < n - 1:
+#             P[i] = -A[i][2] / denominator
+#         Q[i] = (b[i] - A[i][0] * Q[i-1]) / denominator
 
-    for i in range(1, n):
-        denominator = A[i][1] + A[i][0] * P[i-1]
-        if abs(denominator) < tolerance:
-             print(f"Ошибка в progonka: Деление на ноль на шаге прямого хода {i}. Знаменатель близок к нулю.")
-             return None
-        if i < n - 1:
-            P[i] = -A[i][2] / denominator
-        Q[i] = (b[i] - A[i][0] * Q[i-1]) / denominator
+#     x[n - 1] = Q[n - 1]
+#     for i in range(n - 2, -1, -1):
+#         x[i] = P[i] * x[i + 1] + Q[i]
 
-    x[n - 1] = Q[n - 1]
-    for i in range(n - 2, -1, -1):
-        x[i] = P[i] * x[i + 1] + Q[i]
-
-    return x
+#     return x
 
 def calculate_spline_coeffs(xs, fs: list):
     n = len(xs)
@@ -235,6 +240,11 @@ elif x_calc is not None:
 
 print("\n--- Построение графика ---")
 
+output_dir = '/home/snowwy/Desktop/MAI/_math/8_Численные_методы/numerical_methods/lab_3/src'
+os.makedirs(output_dir, exist_ok=True)
+graph_filepath = os.path.join(output_dir, '3_2.png')
+
+
 if spline_coeffs is not None:
     x_plot = np.linspace(xs_np[0], xs_np[-1], countPoints)
 
@@ -254,8 +264,8 @@ if spline_coeffs is not None:
     plt.title("Кубическая сплайн-интерполяция")
     plt.xlabel("x")
     plt.ylabel("f(x)")
-    plt.savefig('3_2.png')
-    print("График сохранен в файл 3_2.png")
+    plt.savefig(graph_filepath)
+    print(f"График сохранен в файл {graph_filepath}")
 
 elif n_points >= 2:
     print(f"Недостаточно точек ({n_points}) для построения кубического сплайна.")
@@ -267,8 +277,8 @@ elif n_points >= 2:
     plt.title("Исходные точки")
     plt.xlabel("x")
     plt.ylabel("f(x)")
-    plt.savefig('3_2.png')
-    print("График сохранен в файл 3_2.png")
+    plt.savefig(graph_filepath)
+    print(f"График сохранен в файл {graph_filepath}")
 
 else:
      pass

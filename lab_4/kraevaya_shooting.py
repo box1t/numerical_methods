@@ -1,6 +1,6 @@
 import numpy as np
 from random import randint
-
+import os 
 
 def splitting(x0, xk, h):
     xs = []
@@ -10,7 +10,6 @@ def splitting(x0, xk, h):
         x += h
     xs.append(xk)
     return xs
-
 
 # Рунге-Кутт 4го порядка
 p = 4
@@ -52,6 +51,12 @@ def RungeKutta(xs: list, y0: np.ndarray, h):
 
     return ys
 
+def RungeError(ys: np.ndarray, ys2: np.ndarray, p):
+    k = 2
+    error = 0
+    for i in range(ys.shape[0]):
+        error = max(error, abs(ys2[i * 2][0] - ys[i][0]) / (k ** p - 1))
+    return error
 
 def Shooting(xs, y0, h, eps):
     eta0 = randint(-2166, 2166)
@@ -75,14 +80,6 @@ def Shooting(xs, y0, h, eps):
         iter += 1
         eta0 = eta1
         eta1 = eta
-
-
-def RungeError(ys: np.ndarray, ys2: np.ndarray, p):
-    k = 2
-    error = 0
-    for i in range(ys.shape[0]):
-        error = max(error, abs(ys2[i * 2][0] - ys[i][0]) / (k ** p - 1))
-    return error
 
 
 def f(x: float, y: np.ndarray):

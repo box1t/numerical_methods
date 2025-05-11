@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import os 
 
 def f(x):
     if isinstance(x, (int, float)):
@@ -202,6 +203,9 @@ except Exception as e:
 # --- Построение графика ---
 
 print("\n--- Построение графика ---")
+output_dir = '/home/snowwy/Desktop/MAI/_math/8_Численные_методы/numerical_methods/lab_3/src'
+os.makedirs(output_dir, exist_ok=True)
+graph_filepath = os.path.join(output_dir, '3_1.png')
 
 countPoints = 1000
 x_plot = np.linspace(xs[0], xs[-1], countPoints)
@@ -217,8 +221,8 @@ if len(xs) < 2:
     plt.legend()
     plt.grid(True)
     try:
-        plt.savefig('3_1.png')
-        print("График сохранен в файл 3_1.png")
+        plt.savefig(graph_filepath)
+        print(f"График сохранен в файл {graph_filepath}")
     except Exception as e:
         print(f"Ошибка при сохранении графика: {e}")
     plt.show()
@@ -254,7 +258,7 @@ else:
     plt.grid(True)
 
     try:
-        plt.savefig('3_1.png')
-        print("График сохранен в файл 3_1.png")
+        plt.savefig(graph_filepath)
+        print(f"График сохранен в файл {graph_filepath}")
     except Exception as e:
         print(f"Ошибка при сохранении графика: {e}")

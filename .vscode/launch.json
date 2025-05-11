@@ -1,0 +1,40 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run 3_2.py as numerical_methods module", // Дайте более понятное имя
+            "type": "debugpy", // Оставляем debugpy
+            "request": "launch",
+            "module": "numerical_methods.lab_3.3_2", // Указываем путь к модулю
+            "cwd": "/home/snowwy/Desktop/MAI/_math/8_Численные_методы/", // Указываем рабочую директорию, которая содержит пакет numerical_methods
+            "console": "integratedTerminal" // Будет выводить ввод/вывод в терминале VS Code
+        },
+        {
+            "name": "Run new_4_1.py as numerical_methods module", // Дайте более понятное имя
+            "type": "debugpy", // Оставляем debugpy
+            "request": "launch",
+            "module": "numerical_methods.lab_4.new_kraevaya_shooting", // Указываем путь к модулю
+            "cwd": "/home/snowwy/Desktop/MAI/_math/8_Численные_методы/", // Указываем рабочую директорию, которая содержит пакет numerical_methods
+            "console": "integratedTerminal" // Будет выводить ввод/вывод в терминале VS Code
+        },
+        {
+            "name": "Run 4_1.py as numerical_methods module", // Дайте более понятное имя
+            "type": "debugpy", // Оставляем debugpy
+            "request": "launch",
+            "module": "numerical_methods.lab_4.kraevaya_shooting", // Указываем путь к модулю
+            "cwd": "/home/snowwy/Desktop/MAI/_math/8_Численные_методы/", // Указываем рабочую директорию, которая содержит пакет numerical_methods
+            "console": "integratedTerminal" // Будет выводить ввод/вывод в терминале VS Code
+        },
+        {
+            "name": "Run 4_2_2.py as numerical_methods module", // Дайте более понятное имя
+            "type": "debugpy", // Оставляем debugpy
+            "request": "launch",
+            "module": "numerical_methods.lab_4.kraevaya_finite_diff", // Указываем путь к модулю
+            "cwd": "/home/snowwy/Desktop/MAI/_math/8_Численные_методы/", // Указываем рабочую директорию, которая содержит пакет numerical_methods
+            "console": "integratedTerminal" // Будет выводить ввод/вывод в терминале VS Code
+        }
+    ]
+}

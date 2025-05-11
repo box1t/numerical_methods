@@ -1,5 +1,6 @@
 import numpy as np
-
+import os 
+from ..lab_1.progonka_lab import progonka
 
 def splitting(x0, xk, h):
     xs = []
@@ -11,25 +12,25 @@ def splitting(x0, xk, h):
     return xs
 
 
-def tridiagonalMatrixAlgorithm(A, b):
-    n = len(b)
+# def progonka(A, b):
+#     n = len(b)
 
-    # Вычисляем прогоночные коэффициенты
-    P = np.empty((n))
-    P[0] = -A[0][2] / A[0][1]
-    Q = np.empty((n))
-    Q[0] = b[0] / A[0][1]
-    for i in range(n):
-        P[i] = (-A[i][2]) / (A[i][1] + A[i][0] * P[i - 1])
-        Q[i] = (b[i] - A[i][0] * Q[i - 1]) / (A[i][1] + A[i][0] * P[i - 1])
+#     # Вычисляем прогоночные коэффициенты
+#     P = np.empty((n))
+#     P[0] = -A[0][2] / A[0][1]
+#     Q = np.empty((n))
+#     Q[0] = b[0] / A[0][1]
+#     for i in range(n):
+#         P[i] = (-A[i][2]) / (A[i][1] + A[i][0] * P[i - 1])
+#         Q[i] = (b[i] - A[i][0] * Q[i - 1]) / (A[i][1] + A[i][0] * P[i - 1])
 
-    # Обратный ход
-    x = np.empty((n))
-    x[n - 1] = Q[n - 1]
-    for i in range(n - 2, -1, -1):
-        x[i] = P[i] * x[i + 1] + Q[i]
+#     # Обратный ход
+#     x = np.empty((n))
+#     x[n - 1] = Q[n - 1]
+#     for i in range(n - 2, -1, -1):
+#         x[i] = P[i] * x[i + 1] + Q[i]
 
-    return x
+#     return x
 
 
 def FiniteDifference(n, xs, h, A_b1, A_c1, A_an, A_bn, b1, bn):
@@ -47,7 +48,7 @@ def FiniteDifference(n, xs, h, A_b1, A_c1, A_an, A_bn, b1, bn):
         A[k][2] = 1 + p(xs[k]) * h / 2
         b[k] = h ** 2 * f(xs[k])
 
-    ys = tridiagonalMatrixAlgorithm(A, b)
+    ys = progonka(A, b)
     return ys
 
 def p(x):

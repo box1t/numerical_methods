@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 def getValue(as_: list, x):
     """Вычисляет значение многочлена с коэффициентами as_ в точке x."""
@@ -66,6 +67,11 @@ fs = [getValue(as_, x) for x in xs]
 error = sum([(fs[i] - ys[i]) ** 2 for i in range(N)])
 print(f"Сумма квадратов ошибок: {np.round(error, 6)}")
 
+output_dir = '/home/snowwy/Desktop/MAI/_math/8_Численные_методы/numerical_methods/lab_3/src'
+os.makedirs(output_dir, exist_ok=True)
+graph_filepath = os.path.join(output_dir, '3_3.png')
+
+
 plt.figure(figsize=(10, 6))
 
 plt.plot(xs, ys, 'o', color=(1, 0, 0), label=f"Функция")
@@ -77,4 +83,5 @@ plt.ylabel("y")
 plt.title("Аппроксимация многочленом методом наименьших квадратов")
 plt.legend()
 plt.grid(True)
-plt.savefig('3_3.png')
+plt.savefig(graph_filepath)
+print(f"График сохранен в файл {graph_filepath}")
