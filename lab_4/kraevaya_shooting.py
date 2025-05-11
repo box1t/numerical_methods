@@ -1,6 +1,7 @@
 import numpy as np
 from random import randint
 import os 
+import matplotlib.pyplot as plt 
 
 def splitting(x0, xk, h):
     xs = []
@@ -105,9 +106,9 @@ eps = 1e-9
 print(f"Шаг: {h}")
 print(f"Точность: {eps}")
 
-xs = splitting(a, b, h)
-ysRungeKutta = RungeKutta(xs, np.array([-2, y0]), h)
-ysShooting, iterShooting, eta = Shooting(xs, y0, h, eps)
+xs = splitting(a, b, h) 
+ysRungeKutta = RungeKutta(xs, np.array([-2, y0]), h) 
+ysShooting, iterShooting, eta = Shooting(xs, y0, h, eps) 
 
 print(f"Итераций в стрельбе: {iterShooting}, Вычисленная y(0) = {eta}")
 
@@ -122,7 +123,6 @@ for i in range(len(xs)):
     print(f"\tРунге-Кутт: yk = {np.round(ysRungeKutta[i][0], 5)}, e = {np.round(errorRungeKutta, 16)}")
     print(f"\tСтрельба:   yk = {np.round(ysShooting[i][0], 5)}, e = {np.round(errorShooting, 16)}")
 
-
 # Считаем для шага в два раза короче, чтобы применить оценку Рунге
 h2 = h / 2
 
@@ -130,3 +130,28 @@ xs2 = splitting(a, b, h2)
 ysShooting2, iterShooting, eta = Shooting(xs2, y0, h2, eps)
 print("===================================================================")
 print(f"Апостериорная оценка погрешности по Рунге: {RungeError(ysShooting, ysShooting2, 4)}")
+
+output_dir = '/home/snowwy/Desktop/MAI/_math/8_Численные_методы/numerical_methods/lab_4/src'
+os.makedirs(output_dir, exist_ok=True)
+graph_filepath = os.path.join(output_dir, 'odu_4_2_runge_and_shooting.png')
+
+# Получаем истинные значения для графика
+true_y_values = np.array([getTrueY(x) for x in xs])
+
+plt.figure(figsize=(14, 8))
+
+plt.plot(xs, true_y_values, 'k-', linewidth=2, label="Истинное решение")
+plt.plot(xs, ysRungeKutta[:, 0], 'b--', marker='o', markersize=5, markevery=max(1, len(xs)//10), label="Метод Рунге-Кутта")
+plt.plot(xs, ysShooting[:, 0], 'r:', marker='x', markersize=5, markevery=max(1, len(xs)//10), label="Метод Стрельбы")
+
+plt.legend(fontsize=12)
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.title("Сравнение истинного и численных решений ОДУ", fontsize=16)
+plt.xlabel("x", fontsize=12)
+plt.ylabel("y(x)", fontsize=12)
+plt.xlim(a, b)
+plt.tick_params(axis='both', which='major', labelsize=10)
+
+plt.tight_layout()
+plt.savefig(graph_filepath, dpi=300)
+print(f"\nГрафик сохранен в файл {graph_filepath}")

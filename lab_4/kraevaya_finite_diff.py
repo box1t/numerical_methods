@@ -1,5 +1,6 @@
 import numpy as np
 import os 
+import matplotlib.pyplot as plt
 from ..lab_1.progonka_lab import progonka
 
 def splitting(x0, xk, h):
@@ -10,28 +11,6 @@ def splitting(x0, xk, h):
         x += h
     xs.append(xk)
     return xs
-
-
-# def progonka(A, b):
-#     n = len(b)
-
-#     # Вычисляем прогоночные коэффициенты
-#     P = np.empty((n))
-#     P[0] = -A[0][2] / A[0][1]
-#     Q = np.empty((n))
-#     Q[0] = b[0] / A[0][1]
-#     for i in range(n):
-#         P[i] = (-A[i][2]) / (A[i][1] + A[i][0] * P[i - 1])
-#         Q[i] = (b[i] - A[i][0] * Q[i - 1]) / (A[i][1] + A[i][0] * P[i - 1])
-
-#     # Обратный ход
-#     x = np.empty((n))
-#     x[n - 1] = Q[n - 1]
-#     for i in range(n - 2, -1, -1):
-#         x[i] = P[i] * x[i + 1] + Q[i]
-
-#     return x
-
 
 def FiniteDifference(n, xs, h, A_b1, A_c1, A_an, A_bn, b1, bn):
     A = np.zeros((n, 3))
@@ -97,3 +76,28 @@ xs2 = splitting(a, b, h2)
 ys2 = FiniteDifference(int(b / h2) + 1, xs2, h2, -1/h2, 1/h2, -1/h2, (h2 + 1)/h2, 0, -0.75)
 print("===================================================================")
 print(f"Апостериорная оценка погрешности по Рунге: {RungeError(ys, ys2, 1)}")
+
+
+output_dir = '/home/snowwy/Desktop/MAI/_math/8_Численные_методы/numerical_methods/lab_4/src'
+os.makedirs(output_dir, exist_ok=True)
+graph_filepath = os.path.join(output_dir, 'odu_4_3_finite_diff.png')
+
+# Получаем истинные значения для графика
+true_y_values = np.array([getTrueY(x) for x in xs])
+
+plt.figure(figsize=(14, 8))
+
+plt.plot(xs, true_y_values, 'k-', linewidth=2, label="Истинное решение")
+plt.plot(xs, ys, 'b--', marker='o', markersize=5, markevery=max(1, len(xs)//10), label="Метод конечных разностей")
+
+plt.legend(fontsize=12)
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.title("Сравнение истинного и численного решений ОДУ (Метод конечных разностей)", fontsize=16)
+plt.xlabel("x", fontsize=12)
+plt.ylabel("y(x)", fontsize=12)
+plt.xlim(a, b)
+plt.tick_params(axis='both', which='major', labelsize=10)
+
+plt.tight_layout()
+plt.savefig(graph_filepath, dpi=300)
+print(f"\nГрафик сохранен в файл {graph_filepath}")
