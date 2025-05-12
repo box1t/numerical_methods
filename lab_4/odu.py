@@ -218,8 +218,8 @@ def _get_runge_kutta_Ks(x: float, y: np.ndarray, h: float, ode_func, p: int, as_
         for j in range(i):
             newY += bs[i - 1][j] * Ks[j]
 
-        if newX == 0:
-             raise ZeroDivisionError(f"Деление на ноль в ode_func(x,y): промежуточная точка x = {newX} при расчете K{i+1}.")
+        # if newX == 0:
+        #      raise ZeroDivisionError(f"Деление на ноль в ode_func(x,y): промежуточная точка x = {newX} при расчете K{i+1}.")
         
         K = h * ode_func(newX, newY)
         if DEBUG_MODE: print(f"\tK{i + 1} = {K}")

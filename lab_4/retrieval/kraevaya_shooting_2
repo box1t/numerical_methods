@@ -1,0 +1,302 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+from random import randint
+
+try:
+    from odu import RK_P, RK_AS, RK_BS, RK_CS, solve_runge_kutta, calculate_runge_error, generate_grid_points
+except ImportError:
+    print("Ошибка: Не удалось импортировать функции из odu.py.")
+    print("Пожалуйста, убедитесь, что odu.py находится в той же директории или доступен в PYTHONPATH.")
+    exit()
+
+# ==================================================================================
+# 1. Конфигурация и глобальные параметры
+# ==================================================================================
+
+# Параметры краевой задачи
+A_INTERVAL = 0
+B_INTERVAL = 1
+Y0_INITIAL_GUESS_FOR_RK = np.array([-2, 0]) # Начальное условие y(0) = 0, y'(0) = -2 (для прямого RK)
+H_STEP = 0.125
+EPSILON = 1e-9 # Точность для метода стрельбы
+
+# Выходная директория для графиков
+OUTPUT_DIRECTORY = '/home/snowwy/Desktop/MAI/_math/8_Численные_методы/numerical_methods/lab_4/src'
+
+# ==================================================================================
+# 2. Определение ОДУ и аналитического решения (специфичные для этой краевой задачи)
+# ==================================================================================
+
+def f(x: float, y: np.ndarray) -> np.ndarray:
+    """
+    Правая часть системы ОДУ: y'' - ((x-3)/(x^2-1))y' + (1/(x^2-1))y = 0
+    В виде системы:
+    y_0' = y_1
+    y_1' = ((x-3)y_1 - y_0) / (x^2-1)
+
+    Особый случай: при x = 1, уравнение переопределяется до y_1' = y_1 / 2.
+    """
+    if not isinstance(x, (int, float)):
+        raise TypeError("x должен быть числом.")
+    if not isinstance(y, np.ndarray) or y.ndim != 1 or y.shape[0] != 2:
+        raise TypeError("y должен быть одномерным numpy.ndarray размерности 2.")
+
+    if x == 1:
+        return np.array([
+            y[1],
+            y[1] / 2
+        ])
+    
+    denominator = x**2 - 1
+    if abs(denominator) < 1e-10: 
+        raise ZeroDivisionError(f"Деление на ноль в f(x,y): x = {x}, x^2 - 1 = {denominator}. Возможно, интервал интегрирования включает x=1 или x=-1, где уравнение сингулярно.")
+    
+    return np.array([
+        y[1],
+        (y[0] - (x - 3) * y[1]) / denominator
+    ])
+
+def get_true_solution(x: float) -> float:
+    """
+    Аналитическое решение y(x) = x - 3 + 1 / (x + 1)
+    """
+    if not isinstance(x, (int, float)):
+        raise TypeError("x должен быть числом.")
+    if x == -1:
+        raise ZeroDivisionError("Аналитическое решение не определено при x = -1.")
+    return x - 3 + 1 / (x + 1)
+
+def get_target_boundary_condition_value(ys: np.ndarray) -> float:
+    """
+    Вычисляет целевое значение Ф(η) = y(b) + y'(b) + 0.75
+    для метода стрельбы. ys[-1][0] это y(b), ys[-1][1] это y'(b).
+    Это следует из граничного условия y(1) + y'(1) = -0.75, т.е. y(1) + y'(1) + 0.75 = 0.
+    """
+    if not isinstance(ys, np.ndarray) or ys.ndim != 2:
+        raise TypeError("ys должен быть двумерным numpy.ndarray.")
+    if ys.shape[1] != 2:
+        raise ValueError("ys должен содержать y и y'.")
+    return ys[-1][0] + ys[-1][1] + 0.75
+
+# ==================================================================================
+# 3. Метод стрельбы
+# ==================================================================================
+
+def solve_shooting_method(
+    x_points: list, 
+    initial_y0_val: float, 
+    h_step: float, 
+    tolerance: float, 
+    ode_func, 
+    target_bc_func, 
+    rk_p: int, 
+    rk_as: list, 
+    rk_bs: list, 
+    rk_cs: list
+) -> tuple[np.ndarray, int, float]:
+
+    # Приводим к float, чтобы обойти потенциальные проблемы с numpy.int64 и isinstance
+    initial_y0_val = float(initial_y0_val)
+
+    if not isinstance(x_points, list) or not all(isinstance(x, (int, float)) for x in x_points):
+        raise TypeError("x_points должен быть списком чисел.")
+    if not isinstance(initial_y0_val, (int, float)): # Эта проверка теперь будет проходить, если преобразование к float успешно
+        raise TypeError("initial_y0_val должен быть числом.")
+    if not isinstance(h_step, (int, float)) or h_step <= 0:
+        raise ValueError("h_step должен быть положительным числом.")
+    if not isinstance(tolerance, (int, float)) or tolerance <= 0:
+        raise ValueError("tolerance должен быть положительным числом.")
+    if not callable(ode_func) or not callable(target_bc_func):
+        raise TypeError("ode_func и target_bc_func должны быть вызываемыми функциями.")
+
+    # Инициализация случайными начальными приближениями для y'(a) (η)
+    # Эти eta0 и eta1 - две "пробные стрельбы", необходимые для метода секущих.
+    eta0 = randint(-2166, 2166)
+    eta1 = randint(-2166, 2166)
+
+    # Решение задачи Коши для первых двух приближений
+    ys0 = solve_runge_kutta(x_points, np.array([initial_y0_val, eta0]), h_step, ode_func, rk_p, rk_as, rk_bs, rk_cs)
+    ys1 = solve_runge_kutta(x_points, np.array([initial_y0_val, eta1]), h_step, ode_func, rk_p, rk_as, rk_bs, rk_cs)
+
+    # Вычисление целевой функции F(η) = y(b) - Y_b для каждого приближения
+    # Здесь F(η) соответствует Ф(η) из уравнения 3.46.
+    F0 = target_bc_func(ys0)
+    F1 = target_bc_func(ys1)
+
+    iterations = 1
+    print("\n--- Процесс поиска корня Ф(η) = 0 (Метод секущих) ---")
+    print(f"Итерация 0: η = {eta0:.6e}, Ф(η) = {F0:.6e}")
+    print(f"Итерация 1: η = {eta1:.6e}, Ф(η) = {F1:.6e}")
+
+    while True:
+        # Проверка на очень малую разницу F1-F0 для избежания деления на ноль
+        if abs(F1 - F0) < tolerance * 1e-3: 
+            print(f"Предупреждение: Разница Ф(eta1) - Ф(eta0) ({F1-F0:.2e}) очень мала. Метод секущих приближается к сингулярности или уже сошелся.")
+            if abs(F1) < tolerance:
+                print(f"Сходимость достигнута на итерации {iterations} с Ф(η) = {F1:.6e}")
+                return ys1, iterations, eta1
+            else:
+                raise RuntimeError(f"Метод стрельбы не сошелся из-за слишком малой разницы Ф(eta1) - Ф(eta0) на итерации {iterations}.")
+                
+        # Вычисление нового η по формуле метода секущих (аналогично формуле из ваших материалов)
+        # eta_new = eta1 - (eta1 - eta0) / (F1 - F0) * F1
+        η = eta1 - (eta1 - eta0) / (F1 - F0) * F1
+        
+        # Решаем задачу Коши с новым η
+        ys = solve_runge_kutta(x_points, np.array([initial_y0_val, η]), h_step, ode_func, rk_p, rk_as, rk_bs, rk_cs)
+        
+        # Обновляем значения F0 и F1 для следующей итерации
+        F0 = F1
+        F1 = target_bc_func(ys)
+
+        iterations += 1
+        print(f"Итерация {iterations}: η = {η:.6e}, Ф(η) = {F1:.6e}") # Вывод текущего значения Ф(η)
+
+        if abs(F1) < tolerance: # Проверка условия сходимости: Ф(η) близко к нулю
+            print(f"Сходимость достигнута на итерации {iterations} с Ф(η) = {F1:.6e}")
+            return ys, iterations, η
+        
+        eta0 = eta1
+        eta1 = η
+
+        if iterations > 1000: # Ограничение на количество итераций для предотвращения бесконечного цикла
+            print(f"Предупреждение: Превышено максимальное количество итераций (1000). Метод стрельбы не сошелся. Ф(η) = {F1:.6e}")
+            return ys, iterations, η
+
+# ==================================================================================
+# 4. Функции для построения графиков
+# ==================================================================================
+
+def plot_shooting_results(xs: list, true_y_values: np.ndarray, methods_results: dict, 
+                          output_dir: str, filename: str, title: str):
+    """
+    Строит комбинированный график численных и истинного решений для метода стрельбы.
+    methods_results: словарь вида {"Название Метода": np.ndarray (результаты)}
+    """
+    plt.figure(figsize=(14, 8))
+
+    plt.plot(xs, true_y_values, 'k-', linewidth=2, label="Истинное решение")
+
+    plot_styles = {
+        "Рунге-Кутта": {'color': 'b', 'linestyle': '--', 'marker': 'o', 'label': "Метод Рунге-Кутта"},
+        "Стрельба": {'color': 'r', 'linestyle': ':', 'marker': 'x', 'label': "Метод Стрельбы"}
+    }
+
+    for method_name, ys_data in methods_results.items():
+        style = plot_styles.get(method_name, {'color': 'b', 'linestyle': '-', 'marker': 'o', 'label': method_name}) # Изменено для общности
+        # ys_data[:, 0] выбирает только y(x) из [y(x), y'(x)]
+        plt.plot(xs, ys_data[:, 0], style['color'], linestyle=style['linestyle'], 
+                 marker=style['marker'], markersize=5, markevery=max(1, len(xs)//10), 
+                 label=style['label'])
+
+    plt.legend(fontsize=12)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.title(title, fontsize=16)
+    plt.xlabel("x", fontsize=12)
+    plt.ylabel("y(x)", fontsize=12)
+    plt.xlim(A_INTERVAL, B_INTERVAL)
+    plt.tick_params(axis='both', which='major', labelsize=10)
+
+    plt.tight_layout()
+    os.makedirs(output_dir, exist_ok=True)
+    graph_filepath = os.path.join(output_dir, filename)
+    plt.savefig(graph_filepath, dpi=300)
+    print(f"\nГрафик сохранен в файл {graph_filepath}")
+
+# ==================================================================================
+# 5. Основная логика выполнения
+# ==================================================================================
+
+if __name__ == "__main__":
+    print("===================================================================")
+    print("Начало выполнения программы для краевой задачи методом стрельбы")
+    print("===================================================================")
+    print(f"Интервал: [{A_INTERVAL}, {B_INTERVAL}]")
+    print(f"Шаг интегрирования: {H_STEP}")
+    print(f"Точность для метода стрельбы (epsilon): {EPSILON}")
+
+    # 1. Генерация сетки точек
+    # Переиспользуем generate_grid_points из odu.py
+    xs = generate_grid_points(A_INTERVAL, B_INTERVAL, H_STEP)
+    if not xs:
+        print("Ошибка: Список узлов xs пуст. Проверьте интервал и шаг.")
+        exit()
+
+    # 2. Решение задачи Коши (для сравнения, используя начальные условия y(0)=0, y'(0)=-2)
+    # Переиспользуем solve_runge_kutta из odu.py
+    print(f"\nРешение задачи Коши методом Рунге-Кутты с начальными условиями y(0)={Y0_INITIAL_GUESS_FOR_RK[0]}, y'(0)={Y0_INITIAL_GUESS_FOR_RK[1]}:")
+    ys_rungekutta = solve_runge_kutta(xs, Y0_INITIAL_GUESS_FOR_RK, H_STEP, f, RK_P, RK_AS, RK_BS, RK_CS)
+
+    # 3. Решение краевой задачи методом стрельбы
+    print(f"\nРешение краевой задачи методом стрельбы с начальным условием y({A_INTERVAL})={Y0_INITIAL_GUESS_FOR_RK[0]}:")
+    # Добавленные print-ы внутри solve_shooting_method покажут процесс поиска корня Ф(η)
+    ys_shooting, iter_shooting, optimal_eta = solve_shooting_method(
+        xs, Y0_INITIAL_GUESS_FOR_RK[0], H_STEP, EPSILON, f, get_target_boundary_condition_value,
+        RK_P, RK_AS, RK_BS, RK_CS
+    )
+    print(f"Итераций в стрельбе: {iter_shooting}")
+    print(f"Найденное оптимальное y'(0) (η) для краевого условия: {optimal_eta:.8e}")
+    
+    # Явное указание найденного значения решения задачи Коши на правом конце отрезка
+    if ys_shooting is not None and len(ys_shooting) > 0:
+        y_at_b = ys_shooting[-1][0]
+        yp_at_b = ys_shooting[-1][1]
+        print(f"-------------------------------------------------------------------")
+        print(f"Найденное решение задачи Коши на правом конце отрезка x = {B_INTERVAL}:")
+        print(f"y({B_INTERVAL}) = {y_at_b:.8e}")
+        print(f"y'({B_INTERVAL}) = {yp_at_b:.8e}")
+        print(f"Проверка краевого условия y({B_INTERVAL}) + y'({B_INTERVAL}) + 0.75 = {y_at_b + yp_at_b + 0.75:.8e} (должно быть близко к 0)")
+        print(f"-------------------------------------------------------------------")
+
+
+    # 4. Вывод результатов и сравнение с истинным решением (шаг h)
+    print("\n===================================================================")
+    print("Сравнение численных решений с истинным (шаг h):")
+    print("===================================================================")
+    for i in range(len(xs)):
+        try:
+            y_true = get_true_solution(xs[i])
+        except ZeroDivisionError as e:
+            print(f"Ошибка при вычислении истинного решения в x={xs[i]}: {e}. Пропуск точки.")
+            continue # Пропускаем эту точку, если аналитическое решение не определено
+            
+        print(f"xk = {np.round(xs[i], 5)}, y_true(xk) = {np.round(y_true, 5)}")
+
+        error_rungekutta = abs(ys_rungekutta[i][0] - y_true)
+        error_shooting = abs(ys_shooting[i][0] - y_true)
+
+        print(f"\tРунге-Кутт: yk = {np.round(ys_rungekutta[i][0], 5)}, e = {error_rungekutta:.16f}")
+        print(f"\tСтрельба:   yk = {np.round(ys_shooting[i][0], 5)}, e = {error_shooting:.16f}")
+
+    # 5. Считаем для шага в два раза короче, чтобы применить оценку Рунге
+    H_STEP_HALF = H_STEP / 2
+    xs_half = generate_grid_points(A_INTERVAL, B_INTERVAL, H_STEP_HALF)
+    if not xs_half:
+        print("Ошибка: Список узлов xs_half пуст. Проверьте интервал и шаг.")
+        exit()
+
+    # Вызов solve_shooting_method для оценки Рунге
+    ys_shooting_half, iter_shooting_half, _ = solve_shooting_method(
+        xs_half, Y0_INITIAL_GUESS_FOR_RK[0], H_STEP_HALF, EPSILON, f, get_target_boundary_condition_value,
+        RK_P, RK_AS, RK_BS, RK_CS
+    )
+    print("\n===================================================================")
+    print("Апостериорная оценка погрешности по Рунге:")
+    # Переиспользуем calculate_runge_error из odu.py
+    runge_error = calculate_runge_error(ys_shooting, ys_shooting_half, RK_P)
+    print(f"\tОценка погрешности для метода стрельбы (порядок {RK_P}): {runge_error:.8e}")
+
+    # 6. Построение графиков
+    true_y_values = np.array([get_true_solution(x) for x in xs])
+    methods_results_h = {
+        "Рунге-Кутта": ys_rungekutta,
+        "Стрельба": ys_shooting
+    }
+    plot_shooting_results(xs, true_y_values, methods_results_h, 
+                          OUTPUT_DIRECTORY, '4_2_runge_and_shooting.png', 
+                          f"Сравнение истинного и численных решений краевой задачи (h={H_STEP})")
+
+    print("\n===================================================================")
+    print("Завершение выполнения программы.")
+    print("===================================================================")
