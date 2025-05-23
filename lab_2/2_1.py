@@ -2,7 +2,6 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ошибка с графиком. т.е. выбор диапазона. должен запрещать...... допиши этот код.
 
 def f(x):
     return 4 ** x - 5 * x - 2

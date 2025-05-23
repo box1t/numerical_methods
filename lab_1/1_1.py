@@ -1,117 +1,136 @@
 import numpy as np
 
-def get_LU_decomposition(A):
+np.set_printoptions(precision=6, suppress=True)
+
+
+def LU_decompose(A):
     n = len(A)
-    LU = np.copy(A)
-    swaps = []
-    for k in range(n): # обнуляемый столбец
+    L = [[0 for _ in range(n)] for _ in range(n)]
+    U = np.copy(A)
 
-        if (LU[k][k] == 0): # Ищем ненулевой элемент
-            ind = -1
-            for i in range(k + 1, n):
-                if LU[i][i] != 0:
-                    ind = i
-                    break
-            if ind == -1:
-                continue
-            LU[[k, ind]] = LU[[ind, k]] # Меняем местами строки если, нашли строку с ненулевым элементом
-            swaps.append((k, ind))
+    for k in range(0, n):
+        for i in range(k, n):
+            L[i][k] = U[i][k] / U[k][k]
 
-        for i in range(k + 1, n): # текущая строка
-            mu = LU[i][k] / LU[k][k]
-            for j in range(k, n): # текущая столбец
-                if (j == k):
-                    LU[i][j] = mu
-                else:
-                    LU[i][j] -= mu * LU[k][j]
+        for i in range(k + 1, n):
+            for j in range(n):
+                U[i][j] -= L[i][k] * U[k][j]
 
-    return (LU, swaps)
+    return L, U
 
-def solve_system(LU, swaps, b):
-    n = len(LU)
-    b = np.copy(b)
 
-    # Меняем строки в столбце свободных членов в соответствие с заменами строк в исходной матрице
-    for swap in swaps:
-        b[[swap[0], swap[1]]] = b[[swap[1], swap[0]]]
+def LU_method(A: np.ndarray, b: np.ndarray):
+    A = A.copy()
+    b = b.copy()
+    n = A.shape[0]
+    amount_replace = 0
 
-    # Lz = b
-    z = np.zeros(n)
     for i in range(n):
-        sum_ = sum([LU[i][j] * z[j] for j in range(i)])
-        z[i] = b[i] - sum_
+        max_row = i + np.argmax(np.abs(A[i:, i]))
+        if abs(A[max_row, i] - A[i, i]) > 1e-8:
+            A[[i, max_row]] = A[[max_row, i]]
+            b[[i, max_row]] = b[[max_row, i]]
+            amount_replace += 1
 
-    # Ux = z
-    x = np.zeros(n)
+        for k in range(i + 1, n):
+            coefficient = A[k, i] / A[i, i]
+            A[k, i:] -= coefficient * A[i, i:]
+            b[k] -= coefficient * b[i]
+
+    # Обратный ход (решение Ax = b через LU)
+    x = np.zeros(n, dtype=np.float64)
+
+    # Прямой ход для Ly = b (L неявно в нижнем треугольнике A)
+    y = np.zeros(n, dtype=np.float64)
+    for i in range(n):
+        y[i] = b[i] - np.dot(A[i, :i], y[:i])
+
+    # Обратный ход для Ux = y
     for i in range(n - 1, -1, -1):
-        sum_ = sum([LU[i][j] * x[j] for j in range(n - 1, i, -1)])
-        x[i] = (z[i] - sum_) / LU[i][i]
+        x[i] = (y[i] - np.dot(A[i, i + 1:], x[i + 1:])) / A[i, i]
 
-    return x
+    return x, amount_replace, A
 
-def get_system_determinant(LU, swaps):
-    n = len(LU)
-    det = 1
+
+def get_inverse_matrix(A):
+    n = A.shape[0]
+    identity = np.eye(n)
+    inv = np.zeros_like(A, dtype=np.float64)
+
     for i in range(n):
-        det *= LU[i][i]
+        e = identity[:, i]
+        inv[:, i], _, _ = LU_method(A, e)
 
-    # Каждая замена строк исходной матрицы - смена знака у определителя
-    if (len(swaps) % 2 == 1):
-        det *= -1
+    return inv
 
-    return det
 
-def get_inverse_system_matrix(LU, swaps):
-    n = len(LU)
-    A = []
-    for i in range(n):
-        A.append(solve_system(LU, swaps, np.array([(1 if j == i else 0) for j in range(n)])))
+def check_solution(A, b, x):
+    b_calc = A @ x
+    print("My answer    Real b")
+    for bi, br in zip(b_calc, b):
+        print(f"{bi:.6f}    {br:.6f}")
 
-    return np.column_stack(A)
 
-def check_LU_decomposition(LU):
-    n = len(LU)
+def print_matrix(name, matrix):
+    print(f"{name}:")
+    print(np.round(matrix, 6))
+    print()
 
-    L = np.copy(LU)
-    for i in range(n):
-        L[i][i] = 1
-        for j in range(i + 1, n):
-            L[i][j] = 0
 
-    U = np.copy(LU)
-    for i in range(1, n):
-        for j in range(i):
-            U[i][j] = 0
+def main():
+    n = int(input('Введите размерность матрицы системы (одно положительное число): '))
 
-    print("Матрица L:\n", L)
-    print("Матрица U:\n", U)
+    print(f"Введите матрицу A размером {n}x{n} построчно (элементы разделены пробелами):")
+    A = np.array([list(map(np.float64, input().split())) for _ in range(n)], dtype=np.float64)
 
-    A = np.dot(L, U)
-    print("Матрица A:\n", np.round(A, 2))
+    print("Введите столбец свободных членов b (элементы через пробел):")
+    b = np.array(list(map(np.float64, input().split())), dtype=np.float64)
 
-A = np.array([
-    [8, 8, -5, -8],
-    [8, -5, 9, -8],
-    [5, -4, -6, -2],
-    [8, 3, 6, 6],
-], np.float32)
-b = np.array([13, 38, 14, -95], np.float32)
+    if abs(np.linalg.det(A)) < 1e-10:
+        print("Матрица вырождена. Система имеет бесконечно много решений, либо не имеет ни одного. Обратной матрицы не существует")
+        exit(0)
 
-(LU, swaps) = get_LU_decomposition(A)
-print("LU разложение:\n", np.round(LU, 2))
-print("Замены строк: ", swaps)
+    L, U = LU_decompose(A)
+    x, amount_replace, lu_matrix = LU_method(A, b)
+    print("\nLU-разложение:")
+    print_matrix("L matrix", L)
+    print_matrix("U matrix", U)
 
-print("\nПроверка LU разложения:")
-check_LU_decomposition(LU)
+    print("Проверка L * U:")
+    print_matrix("L * U", L @ U)
 
-system_solution = solve_system(LU, swaps, b)
-print("\nРешение системы: ", np.round(system_solution, 2))
-print("Проверка решения системы: ", np.round(np.linalg.solve(A, b), 2))
+    print("Вектор решения x:")
+    for x_i in x:
+        print(f"{x_i:.6f}")
 
-system_determinant = get_system_determinant(LU, swaps)
-print("\nОпределитель матрицы системы: ", round(system_determinant, 2))
-print("Проверка определителя матрицы системы: ", round(np.linalg.det(A), 2))
+    det = ((-1) ** amount_replace) * np.prod(np.diag(lu_matrix))
+    print(f"\ndet(A): {det:.6f}")
+    if np.abs(det) < 1e-10:
+        print("Матрица A вырождена, обратной не существует.")
+        return
 
-inverse_system_matrixA = get_inverse_system_matrix(LU, swaps)
-print("\nОбратная матрица системы:\n", np.round(inverse_system_matrixA, 4))
-print("Проверка обратности:\n", np.round(np.dot(A, inverse_system_matrixA), 2))
+    A_inv = get_inverse_matrix(A)
+    print_matrix("Обратная матрица A^-1", A_inv)
+
+    print("Проверка A * A^-1:")
+    print_matrix("A * A^-1", A @ A_inv)
+
+    print("Проверка A^-1 * A:")
+    print_matrix("A^-1 * A", A_inv @ A)
+
+    print("Проверка решения системы:")
+    check_solution(A, b, x)
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+# A = np.array([
+#     [8, 8, -5, -8],
+#     [8, -5, 9, -8],
+#     [5, -4, -6, -2],
+#     [8, 3, 6, 6],
+# ], np.float32)
+# b = np.array([13, 38, 14, -95], np.float32)

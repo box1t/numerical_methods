@@ -11,37 +11,6 @@ print("Текущий sys.path:")
 for p in sys.path:
     print(f"  {p}")
     
-# def progonka(A, b):
-#     n = len(b)
-#     if A.shape[0] != n or A.shape[1] != 3:
-#         print("Ошибка в progonka: Неверные размеры матрицы A.")
-#         return None
-
-#     P = np.empty((n))
-#     Q = np.empty((n))
-#     x = np.empty((n))
-
-#     if A[0][1] == 0:
-#          print("Ошибка в progonka: Деление на ноль при расчете P[0]. Главный диагональный элемент равен нулю.")
-#          return None
-#     P[0] = -A[0][2] / A[0][1]
-#     Q[0] = b[0] / A[0][1]
-
-#     for i in range(1, n):
-#         denominator = A[i][1] + A[i][0] * P[i-1]
-#         if abs(denominator) < tolerance:
-#              print(f"Ошибка в progonka: Деление на ноль на шаге прямого хода {i}. Знаменатель близок к нулю.")
-#              return None
-#         if i < n - 1:
-#             P[i] = -A[i][2] / denominator
-#         Q[i] = (b[i] - A[i][0] * Q[i-1]) / denominator
-
-#     x[n - 1] = Q[n - 1]
-#     for i in range(n - 2, -1, -1):
-#         x[i] = P[i] * x[i + 1] + Q[i]
-
-#     return x
-
 def calculate_spline_coeffs(xs, fs: list):
     n = len(xs)
     if n < 3:

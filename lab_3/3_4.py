@@ -170,7 +170,6 @@ def run_derivative_example(description, x, xs, ys, tolerance=1e-9):
     else:
         print("Проверка шага: Неприменимо (менее 2 точек).")
 
-    # Вызываем функции производных только если точек достаточно для потенциального расчета (хотя бы 3)
     if len(xs) >= 3 and check_constant_step(xs, tolerance): # Дополнительная проверка здесь, чтобы не вызывать функции, если шаг неравномерный
          try:
              print(f"\nВычисление производных в точке x = {x}")
@@ -187,13 +186,7 @@ def run_derivative_example(description, x, xs, ys, tolerance=1e-9):
          except Exception as e:
              print(f"Неожиданная ошибка: {e}")
     elif len(xs) < 3:
-         # Сообщение о недостаточном количестве точек уже есть в функциях derivative,
-         # но этот else elif блок для ясности потока в run_derivative_example.
-         # В случае N=2 или N=0,1, вызов firstDerivative/secondDerivative выбросит ValueError.
-         # В случае N=3+, но неравномерной сетки, мы уже выбросили ValueError выше.
-         # Этот блок по сути ловит случаи, когда len(xs) < 3.
          try:
-             # Просто попытка вызвать, чтобы получить стандартное сообщение об ошибке
              firstDerivative(x, xs, ys, tolerance)
          except ValueError as e:
              print(f"\nОшибка при вычислении: {e}")
