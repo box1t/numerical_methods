@@ -58,11 +58,15 @@ def QR_algorithm(
             det = a * d - b * c
             discr = trace ** 2 - 4 * det
 
+            print(f"Дискриминант для блока 2x2 на шаге {i}: {discr:.8f}")
+
             if discr < 0:
+                print("Дискриминант отрицательный, ожидаются комплексные собственные значения.")
                 val1 = trace / 2 + 1j * np.sqrt(-discr) / 2
                 val2 = trace / 2 - 1j * np.sqrt(-discr) / 2
                 eigenvalues.extend([val1, val2])
             else:
+                print("Дискриминант неотрицательный, ожидаются вещественные собственные значения.")
                 val1 = (trace + np.sqrt(discr)) / 2
                 val2 = (trace - np.sqrt(discr)) / 2
                 eigenvalues.extend([val1, val2])
@@ -91,33 +95,33 @@ def check_QR_decomposition(
 
 
 if __name__ == '__main__':
-    n = int(input('Input matrix size (one positive number): '))
+    n = int(input('Введите размер матрицы (одно положительное число): '))
 
-    print('Input matrix:')
+    print('Введите матрицу:')
     input_matrix = np.empty((n, n), dtype=float)
     for row in range(n):
         input_matrix[row] = np.array(list(map(
             float,
             input().split())))
 
-    eps = float(input('Input error rate: '))
+    eps = float(input('Введите допустимую погрешность: '))
 
     Q, R = QR_decomposition(input_matrix)
 
-    print("Founded QR decomposition")
-    print("\nQ matrix:\n", Q)
-    print("\nR matrix:\n", R)
-    print("\nQR matrix:\n", Q @ R)
+    print("Найдено QR-разложение:")
+    print("\nМатрица Q:\n", Q)
+    print("\nМатрица R:\n", R)
+    print("\nМатрица QR:\n", Q @ R)
 
     if check_QR_decomposition(input_matrix, Q, R, eps):
-        print("\nQR decomposition founded correctly")
+        print("\nQR-разложение найдено верно.")
     else:
-        print("\nERROR: QR decomposition is not correct")
+        print("\nОШИБКА: QR-разложение неверно.")
         exit(1)
 
     eigenvalues = QR_algorithm(input_matrix, eps)
 
-    print('\nEigenvalues:')
+    print('\nСобственные значения:')
     for i, val in enumerate(eigenvalues):
         if val.imag == 0:
             print(f"λ_{i + 1} = {val.real:.8f} {'+ 0.0i'}")
@@ -126,7 +130,7 @@ if __name__ == '__main__':
 
     print()
 
-    print("Numpy eigenvalues (builtin function):")
+    print("Собственные значения с использованием Numpy (встроенная функция):")
     for i, val in enumerate(np.linalg.eig(input_matrix).eigenvalues):
         if val.imag == 0:
             print(f"λ_{i + 1} = {val.real:.8f} {'+ 0.0i'}")

@@ -22,7 +22,7 @@ def get_true_solution_4th_derivative(x):
         # y''(x) = 2 / (x + 1)^3
         # y'''(x) = -6 / (x + 1)^4
         # y''''(x) = 24 / (x + 1)^5
-        raise ZeroDivisionError(f"Сингулярность 4-й производной при x = {x:.5f}.")
+        raise ZeroDivisionError(f"Зануление 4-й производной при x = {x:.5f}.")
     return 24 / ((x + 1)**5)
 
 A_INTERVAL = 0

@@ -1,6 +1,7 @@
-### Simple Iterations Method
+# Метод Зейделя
 
 import numpy as np
+from mpmath import matrix
 
 
 def print_matrix(matrix):
@@ -17,7 +18,7 @@ def print_vector(vector):
     print()
 
 
-def check_matrix_for_simple_iteration(matrix):
+def check_matrix_for_seidel_method(matrix):
     n = len(matrix)
 
     for i in range(n):
@@ -43,7 +44,7 @@ def check_matrix_for_simple_iteration(matrix):
     return True
 
 
-def get_matrix_c_f_for_simple_iteration(matrix):
+def get_matrix_c_f_for_seidel_method(matrix):
     n = len(matrix)
     result = np.zeros((n, n + 1), dtype=float)
 
@@ -59,22 +60,23 @@ def get_matrix_c_f_for_simple_iteration(matrix):
 
 def get_next_vector_of_x(matrix, vec):
     n = len(matrix)
-    result_vec = np.zeros(n, dtype=float)
+    result_vec = [0.0 for _ in range(n)]
 
     for i in range(n):
         for j in range(n):
-            result_vec[i] += vec[j] * matrix[i][j]
+
+            result_vec[i] += (vec[j] if j > i else result_vec[j]) * matrix[i][j]
 
         result_vec[i] += matrix[i][n]
 
     return result_vec
 
 
-def get_max_diff_for_two_vectors(first, second):
+def get_max_diff(first, second):
     if len(first) != len(second):
-        raise ValueError("Vectors have different lengths!")
+        raise ValueError("Vectors must be of same length")
 
-    return np.max(np.abs(np.subtract(first, second)))
+    return max(abs(abs(a) - abs(b)) for a, b in zip(first, second))
 
 
 def find_matrix_norm(matrix):
@@ -88,13 +90,16 @@ def find_matrix_norm(matrix):
     return max_norm
 
 
-def check_answer(matrix, n, results):
-    print("\nMy answer    Real answer")
+def check_answer(original_matrix, result):
+    n = len(original_matrix)
+
+    print("\nМой ответ          Реальный ответ")
 
     for i in range(n):
-        computed = sum(matrix[i][j] * results[j] for j in range(n))
+        lhs = sum(original_matrix[i][j] * result[j] for j in range(n))
+        rhs = original_matrix[i][n]
 
-        print(f"{computed:.6f} {matrix[i][n]:.6f}")
+        print(f"{lhs:.6f}          {rhs:.6f}")
 
 
 def main():
@@ -114,41 +119,45 @@ def main():
 
     A = np.column_stack((A, b))
 
-    if not check_matrix_for_simple_iteration(A):
+    if not check_matrix_for_seidel_method(A):
         print("ERROR: Матрица не имеет диагонального преобладания")
         exit(1)
 
-    matrix_c_f = get_matrix_c_f_for_simple_iteration(A)
-    print("\nMatrix Alpha and Beta:")
+    matrix_c_f = get_matrix_c_f_for_seidel_method(A)
+    print("\nМатрица Альфа и Вектор Бета:")
     print_matrix(matrix_c_f)
 
     vector_result = np.zeros(n)
 
     diff_prev = 0.0
+    diff_curr = 0.0
     diff_norm = 0.0
     counter = 0
     matrix_norm = find_matrix_norm(matrix_c_f)
     e_k = 1
 
-    while e_k > eps :
-        tmp = vector_result.copy()
-        vector_result = get_next_vector_of_x(matrix_c_f, vector_result)
+    while e_k > eps:
+        tmp = vector_result
+        vector_result = get_next_vector_of_x(matrix_c_f, tmp)
 
-        diff_norm = get_max_diff_for_two_vectors(vector_result, tmp)
+        diff_norm = get_max_diff(vector_result, tmp)
+
         if matrix_norm >= 1:
-            print(f"This system cannot be solved by the simple iteration method - matrix_norm = {matrix_norm}")
+            print(f"Система не может быть решена методом Зейделя: ||α|| = {matrix_norm}")
             e_k = diff_norm
         else:
             e_k = (matrix_norm / (1 - matrix_norm)) * diff_norm
 
         counter += 1
 
-    print(f"The result is:")
+    print(f"Ответ:")
     print_vector(vector_result)
 
-    check_answer(A, n, vector_result)
-
-    print(f"Amount of iterations: {counter}")
+    check_answer(A, vector_result)
+    print(f"\nПодсчет количества итераций по теореме 2:")
+    print("     Если ||α|| < 1, имеет место оценка погрешности:")
+    print("||eps(k)|| <= ||α|| *||x(k) - x(k-1)|| / ( 1 - ||α|| )")
+    print(f"\nЧисло итераций: {counter}")
 
 
 if __name__ == '__main__':

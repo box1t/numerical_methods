@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def check_eigenvectors(
         matrix,
         eigenvalues,
@@ -13,7 +12,6 @@ def check_eigenvectors(
             return False
 
     return True
-
 
 def is_symmetric_matrix(matrix) -> bool:
     matrix_size = matrix.shape[0]
@@ -40,7 +38,6 @@ def find_max_upper_element(X):
 
     return i_max, j_max
 
-
 # Норма матрицы
 def matrix_norm(X):
     norm = 0
@@ -51,7 +48,6 @@ def matrix_norm(X):
 
     return np.sqrt(norm)
 
-
 # Метод вращений
 def rotation_method(A_, eps):
     n = A_.shape[0]
@@ -59,7 +55,15 @@ def rotation_method(A_, eps):
     eigen_vectors = np.eye(n)
     iterations = 0
 
-    while matrix_norm(A) > eps:
+    while True:
+        current_norm = matrix_norm(A)
+        print(f"INFO: Проверка условия окончания итерационного процесса: t(A^({iterations+1})) = {current_norm}")
+        if current_norm < eps:
+            print(f"INFO: Условие окончания итерационного процесса t(A^({iterations+1})) < eps ({eps}) выполняется. Итерационный процесс останавливается.")
+            break
+        else:
+            print(f"INFO: Условие окончания итерационного процесса t(A^({iterations+1})) > eps ({eps}) не выполняется. Итерационный процесс продолжается.")
+
         iterations += 1
         i_max, j_max = find_max_upper_element(A)
         if A[i_max][i_max] - A[j_max][j_max] == 0:
@@ -119,12 +123,6 @@ def calculate_results(matrix, eps):
 
         result_text += "\nv_i - (v_i * A) / λ_i\n"
 
-        # for i in range(matrix.shape[0]):
-        #     result_vector = vectors[i] - ((vectors[i] @ matrix) / values[i])
-        #     max_by_abs = max(result_vector, key=abs)
-        #
-        #     result_text += f"Максимально по модулю значение вектора полученного в результате преобразования {i + 1} СВ и СЗ: {max_by_abs}\n"
-
         print(result_text)
 
     except ValueError as e:
@@ -145,9 +143,11 @@ if __name__ == '__main__':
     eps = float(input("Введите точность поиска решения (eps): "))
 
     if not is_symmetric_matrix(input_matrix):
+        print('INFO: Проверка на симметричность матрицы: Матрица не симметрична.')
         print('ERROR: Метод Вращений Якоби не применим - матрица не симметрична!')
         exit(1)
     else:
+        print('INFO: Проверка на симметричность матрицы: Матрица симметрична.')
         print('INFO: Метод Вращений Якоби применим!')
 
     calculate_results(input_matrix, eps)
