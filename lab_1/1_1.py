@@ -130,9 +130,24 @@ def check_solution(A, b, x):
     Проверяет решение системы Ax = b.
     """
     b_calc = A @ x
-    print("My answer    Real b")
+    print("\nМой ответ         Исходный вектор b")
     for bi, br in zip(b_calc, b):
         print(f"{bi:.6f}    {br:.6f}")
+
+def check_linear_independence(A):
+    """
+    Проверяет линейную зависимость/независимость строк матрицы A.
+    """
+    rank = np.linalg.matrix_rank(A)
+    num_rows = A.shape[0]
+    print(f"\nРанг матрицы A: {rank}")
+    print(f"Количество строк в матрице A: {num_rows}")
+
+    if rank == num_rows:
+        print("Система линейно независима (строки не являются линейными комбинациями друг друга).")
+    else:
+        print("Система линейно зависима (хотя бы одна строка является линейной комбинацией других).")
+
 
 def main():
     n = int(input('Введите размерность матрицы системы (одно положительное число): '))
@@ -171,6 +186,9 @@ def main():
         det_A = compute_determinant(U, num_swaps)
         print(f"\ndet(A): {det_A:.6f}")
 
+        # Проверка на линейную зависимость/независимость
+        check_linear_independence(A)
+
         if np.abs(det_A) < 1e-9: # Используем небольшой допуск для сравнения с нулем
             print("Матрица A вырождена, обратной не существует.")
             return
@@ -187,6 +205,7 @@ def main():
 
         print("\n--- Проверка решения системы ---")
         check_solution(A, b, x)
+
 
     except ValueError as e:
         print(f"\nОшибка: {e}")

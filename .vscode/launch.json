@@ -37,4 +37,4 @@
             "console": "integratedTerminal" // Будет выводить ввод/вывод в терминале VS Code
         }
     ]
-}
+}    

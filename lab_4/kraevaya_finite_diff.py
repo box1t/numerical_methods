@@ -4,10 +4,16 @@ import matplotlib.pyplot as plt
 from ..lab_1.progonka_lab import progonka
 
 def p(x):
-    return (x - 3) / (x ** 2 - 1)
+    denominator = x**2 - 1
+    if abs(denominator) < 1e-12:
+        raise ZeroDivisionError(f"Деление на ноль в p(x) при x = {x:.5f} (x^2-1 = {denominator:.2e}).")
+    return (x - 3) / denominator
 
 def q(x):
-    return -1 / (x ** 2 - 1)
+    denominator = x**2 - 1
+    if abs(denominator) < 1e-12:
+        raise ZeroDivisionError(f"Деление на ноль в q(x) при x = {x:.5f} (x^2-1 = {denominator:.2e}).")
+    return -1 / denominator
 
 def f(x):
     return 0
@@ -17,17 +23,14 @@ def get_true_solution(x):
 
 def get_true_solution_4th_derivative(x):
     if abs(x + 1) < 1e-9:
-        # y(x) = x - 3 + 1 / (x + 1)
-        # y'(x) = 1 - 1 / (x + 1)^2
-        # y''(x) = 2 / (x + 1)^3
-        # y'''(x) = -6 / (x + 1)^4
-        # y''''(x) = 24 / (x + 1)^5
-        raise ZeroDivisionError(f"Зануление 4-й производной при x = {x:.5f}.")
+        raise ZeroDivisionError(f"Сингулярность 4-й производной при x = {x:.5f}.")
     return 24 / ((x + 1)**5)
 
 A_INTERVAL = 0
-B_INTERVAL = 1
-INITIAL_STEP_SIZE = 2**(-5)
+B_INTERVAL = 1 - 1e-9
+#INITIAL_STEP_SIZE = 2**(-5)
+INITIAL_STEP_SIZE = 0.1
+
 
 def generate_grid_points(start_point, end_point, step_size):
     if not isinstance(start_point, (int, float)) or not isinstance(end_point, (int, float)):
@@ -39,15 +42,14 @@ def generate_grid_points(start_point, end_point, step_size):
 
     grid_points = []
     current_x = float(start_point)
-    while current_x < end_point + 1e-9:
+    while current_x <= end_point + 1e-10:
         grid_points.append(current_x)
         current_x += step_size
         if len(grid_points) > 100000:
             raise RuntimeError("Слишком много точек сетки. Возможно, шаг h слишком мал или интервал слишком большой.")
     
-    if not grid_points or abs(grid_points[-1] - end_point) > 1e-9 :
-        if end_point not in grid_points:
-            grid_points.append(float(end_point))
+    if not grid_points or abs(grid_points[-1] - end_point) > 1e-10 :
+        grid_points.append(float(end_point))
 
     grid_points = sorted(list(set(grid_points)))
     
@@ -60,10 +62,8 @@ def solve_finite_difference(num_points, grid_points, step_size, A_b1, A_c1, A_an
     if not isinstance(grid_points, list) or not all(isinstance(x, (int, float)) for x in grid_points):
         raise TypeError("grid_points должен быть списком чисел.")
     if len(grid_points) != num_points:
-        print(f"Предупреждение: количество точек в сетке ({len(grid_points)}) не совпадает с num_points ({num_points}).")
-    if not isinstance(step_size, (int, float)) or step_size <= 0:
-        raise ValueError("Шаг h должен быть положительным числом.")
-    
+        pass
+
     if not all(isinstance(arg, (int, float)) for arg in [A_b1, A_c1, A_an, A_bn, b1, bn]):
         raise TypeError("Коэффициенты и значения граничных условий должны быть числами.")
 
@@ -84,8 +84,8 @@ def solve_finite_difference(num_points, grid_points, step_size, A_b1, A_c1, A_an
             pk = p(current_x)
             qk = q(current_x)
             fk = f(current_x)
-        except ZeroDivisionError:
-            raise ValueError(f"Деление на ноль в коэффициентах p(x) или q(x) при x = {current_x:.5f}. Это указывает на сингулярность ОДУ в этой точке.")
+        except ZeroDivisionError as e:
+            raise ValueError(f"Деление на ноль в коэффициентах p(x) или q(x) при x = {current_x:.5f}. Это указывает на сингулярность ОДУ в этой точке: {e}")
 
         matrix_A[k][0] = 1 - pk * step_size / 2
         matrix_A[k][1] = -2 + step_size ** 2 * qk
@@ -103,9 +103,11 @@ def calculate_runge_error(fine_solution: np.ndarray, coarse_solution: np.ndarray
 
     k = 2
 
-    if coarse_solution.shape[0] * k - (k - 1) > fine_solution.shape[0] + 1:
-        if fine_solution.shape[0] < coarse_solution.shape[0] * k - (k -1):
-            raise ValueError("Длины массивов решений несовместимы для оценки Рунге. Убедитесь, что шаг h2 = h / k.")
+    if not (fine_solution.shape[0] >= (coarse_solution.shape[0] -1) * k + 1):
+        raise ValueError(f"Длины массивов решений несовместимы для оценки Рунге. "
+                         f"fine_solution.shape[0]={fine_solution.shape[0]}, "
+                         f"coarse_solution.shape[0]={coarse_solution.shape[0]}, k={k}. "
+                         f"Ожидается fine_solution.shape[0] >= (coarse_solution.shape[0]-1)*k + 1")
 
     error_max = 0.0
     denominator = (k ** order_of_accuracy - 1)
@@ -126,8 +128,8 @@ def calculate_jacobian_eigenvalues(x_value):
     try:
         px = p(x_value)
         qx = q(x_value)
-    except ZeroDivisionError:
-        raise ZeroDivisionError(f"Деление на ноль при вычислении коэффициентов p(x) или q(x) для матрицы Якоби при x = {x_value:.5f}. Это указывает на сингулярность исходного ОДУ.")
+    except ZeroDivisionError as e:
+        raise ZeroDivisionError(f"Деление на ноль при вычислении коэффициентов p(x) или q(x) для матрицы Якоби при x = {x_value:.5f}. Это указывает на сингулярность исходного ОДУ: {e}")
 
     discriminant = px**2 - 4 * qx
     
@@ -157,7 +159,8 @@ def perform_condition_and_stiffness_analysis(start_interval, end_interval):
     except ZeroDivisionError as e:
         print(f"Ошибка при вычислении собственных значений в начале интервала (x={start_interval:.2f}): {e}")
         print("    Невозможно выполнить полную проверку обусловленности/жесткости из-за сингулярности.")
-        return
+        eigenvalues_at_start = np.array([np.nan, np.nan])
+
 
     try:
         eigenvalues_at_end = calculate_jacobian_eigenvalues(end_interval)
@@ -165,7 +168,7 @@ def perform_condition_and_stiffness_analysis(start_interval, end_interval):
     except ZeroDivisionError as e:
         print(f"Ошибка при вычислении собственных значений в конце интервала (x={end_interval:.2f}): {e}")
         print("    Невозможно выполнить полную проверку обусловленности/жесткости из-за сингулярности.")
-        return
+        eigenvalues_at_end = np.array([np.nan, np.nan])
 
 
     is_ill_posed_or_problematic = False
@@ -189,23 +192,20 @@ def perform_condition_and_stiffness_analysis(start_interval, end_interval):
             print(f"    Предупреждение: сингулярность в коэффициентах p(x) или q(x) при x={x_val:.2f}. Это может указывать на плохую обусловленность или жесткость.")
             is_ill_posed_or_problematic = True
             all_real_parts_non_positive = False
-            break
         except Exception as e:
             print(f"    Ошибка при вычислении собственных значений при x={x_val:.2f}: {e}")
             is_ill_posed_or_problematic = True
             all_real_parts_non_positive = False
-            break
 
     if all_real_parts_non_positive:
         print("    На интервале интегрирования, все вещественные части собственных значений матрицы Якоби являются неположительными (Re λk <= 0).")
         print("    Поэтому, система НЕ является жесткой.")
     else:
         example_eigs_str = ""
-        if 'eigenvalues_at_end' in locals() and not np.isnan(eigenvalues_at_end).any():
+        if not np.isnan(eigenvalues_at_end).any():
             example_eigs_str = f" (например, при x={end_interval:.2f}, собственные значения: {eigenvalues_at_end[0]:.5f}, {eigenvalues_at_end[1]:.5f})."
-        else:
-            if 'eigenvalues_at_start' in locals() and not np.isnan(eigenvalues_at_start).any():
-                 example_eigs_str = f" (например, при x={start_interval:.2f}, собственные значения: {eigenvalues_at_start[0]:.5f}, {eigenvalues_at_start[1]:.5f})."
+        elif not np.isnan(eigenvalues_at_start).any():
+             example_eigs_str = f" (например, при x={start_interval:.2f}, собственные значения: {eigenvalues_at_start[0]:.5f}, {eigenvalues_at_start[1]:.5f})."
 
         print(f"    На интервале интегрирования существуют собственные значения матрицы Якоби с положительными вещественными частями{example_eigs_str}")
         print("    Поэтому, система НЕ является жесткой (т.к. нет строго отрицательных вещественных частей для всех λk).")
@@ -267,43 +267,61 @@ def main():
     print("  где: p(x) = (x-3)/(x^2-1), q(x) = -1/(x^2-1), f(x) = 0")
     print("\nЧисленное решение ищется на дискретной сетке x_k = A + k*h.")
     print("Производные аппроксимируются центральными разностями:")
-    print("  u'(x_k)  ≈ (u_{k+1} - u_{k-1}) / (2h)")
-    print("  u''(x_k) ≈ (u_{k-1} - 2u_k + u_{k+1}) / (h^2)")
+    print("  u'(x_k)  ≈ (u_{k+1} - u_{k-1}) / (2h)  (порядок O(h^2))")
+    print("  u''(x_k) ≈ (u_{k-1} - 2u_k + u_{k+1}) / (h^2) (порядок O(h^2))")
     print("\n1. Уравнения для внутренних узлов сетки (k = 1, ..., N-2):")
     print("   Подстановка аппроксимаций производных в исходное ОДУ приводит к:")
     print("     (1 - p(x_k)*h/2) * u_{k-1} + (-2 + h^2*q(x_k)) * u_k + (1 + p(x_k)*h/2) * u_{k+1} = h^2*f(x_k)")
     print("   Эти уравнения формируют основные строки трехдиагональной матрицы.")
 
     print("\n2. Уравнения, полученные из граничных условий (недостающие 2 уравнения):")
+    print("   Для сохранения общего порядка точности O(h^2), граничные условия также аппроксимируются с порядком O(h^2).")
     print("   a) Левое граничное условие (при x = A_INTERVAL = 0): y'(0) = 0")
-    print("      Аппроксимируется правой разностью: (y_1 - y_0) / h = 0")
-    print("      Что дает: -y_0 + y_1 = 0")
+    print("      Используется фиктивная точка u_{-1} и ОДУ в точке x_0:")
+    print("      u''(x_0) + p(x_0)u'(x_0) + q(x_0)u(x_0) = f(x_0)")
+    print("      где u'(x_0) ≈ (u_1 - u_{-1}) / (2h) = 0  => u_{-1} = u_1")
+    print("      Подстановка u_{-1} = u_1 в центральную разность для u''(x_0) дает:")
+    print("      (-2/h^2 + q(x_0)) * u_0 + (2/h^2) * u_1 = f(x_0)")
+    print("      Умножая на h^2: (-2 + h^2 * q(x_0)) * u_0 + 2 * u_1 = h^2 * f(x_0)")
     print("      Эта строка используется для первой строки в системе.")
     print("\n   b) Правое граничное условие (при x = B_INTERVAL = 1): y'(1) + y(1) = -0.75")
-    print("      Аппроксимируется левой разностью для производной: (y_N - y_{N-1}) / h + y_N = -0.75")
-    print("      Что дает: (-1/h) * y_{N-1} + ((h+1)/h) * y_N = -0.75")
+    print("      Используется фиктивная точка u_{N+1} и ОДУ в точке x_N:")
+    print("      y'(x_N) ≈ (u_{N+1} - u_{N-1}) / (2h)")
+    print("      Из граничного условия: (u_{N+1} - u_{N-1}) / (2h) + u_N = -0.75")
+    print("      Выражаем u_{N+1} и подставляем в аппроксимацию ОДУ в точке x_N:")
+    print("      2 * u_{N-1} + (-2 - 2h - h^2 * p(x_N) + h^2 * q(x_N)) * u_N = h^2 * f(x_N) + 1.5h + 0.75 * h^2 * p(x_N)")
     print("      Эта строка используется для последней строки в системе.")
-    print("\nПолученная система линейных алгебраических уравнений решается методом прогонки (Tridiagonal Matrix Algorithm).")
     print("===================================================================\n")
 
     print("===================================================================")
     print("ПОРЯДКИ ТОЧНОСТИ МЕТОДОВ:")
     print("-> Метод конечных разностей:")
-    print("   - Для используемой схемы конечных разностей: O(h^2) (глобальный порядок точности).")
-    print("     Это означает, что при уменьшении шага h в 2 раза, ошибка должна уменьшаться в 4 раза.")
+    print("   - При использовании центральных разностей и аппроксимаций граничных условий порядка O(h^2),")
+    print("     глобальный порядок точности метода составляет O(h^2).")
+    print("     Это означает, что при уменьшении шага h в 2 раза, ошибка должна уменьшаться примерно в 4 раза.")
     print("===================================================================")
 
     xs_h = generate_grid_points(A_INTERVAL, B_INTERVAL, INITIAL_STEP_SIZE)
     num_points_h = len(xs_h)
     print(f"Сетка из {num_points_h} точек с шагом h = {INITIAL_STEP_SIZE}.")
 
-    bc1_coeff_y0 = -1/INITIAL_STEP_SIZE
-    bc1_coeff_y1 = 1/INITIAL_STEP_SIZE
-    bc1_rhs = 0
+    bc1_coeff_y0 = -2 + INITIAL_STEP_SIZE**2 * q(A_INTERVAL)
+    bc1_coeff_y1 = 2
+    bc1_rhs = INITIAL_STEP_SIZE**2 * f(A_INTERVAL)
 
-    bc2_coeff_y_N_minus_1 = -1/INITIAL_STEP_SIZE
-    bc2_coeff_y_N = (INITIAL_STEP_SIZE + 1)/INITIAL_STEP_SIZE
-    bc2_rhs = -0.75
+    try:
+        p_B = p(B_INTERVAL)
+        q_B = q(B_INTERVAL)
+    except ZeroDivisionError as e:
+        print(f"Предупреждение: Проблема с коэффициентами p(x) или q(x) на правой границе {B_INTERVAL}: {e}")
+        p_B = p(B_INTERVAL)
+        q_B = q(B_INTERVAL)
+
+
+    bc2_coeff_y_N_minus_1 = 2
+    bc2_coeff_y_N = -2 - 2*INITIAL_STEP_SIZE - INITIAL_STEP_SIZE**2 * p_B + INITIAL_STEP_SIZE**2 * q_B
+    bc2_rhs = INITIAL_STEP_SIZE**2 * f(B_INTERVAL) + 1.5*INITIAL_STEP_SIZE + 0.75 * INITIAL_STEP_SIZE**2 * p_B
+
 
     solution_y_h = solve_finite_difference(num_points_h, xs_h, INITIAL_STEP_SIZE,
                                             A_b1=bc1_coeff_y0, A_c1=bc1_coeff_y1, b1=bc1_rhs,
@@ -316,7 +334,7 @@ def main():
         numerical_y_val = solution_y_h[i]
         absolute_error = abs(numerical_y_val - true_y_val)
         total_error_h = max(total_error_h, absolute_error) 
-        print(f"x = {xs_h[i]:.5f}, Численное y(x) = {numerical_y_val:.5f}, Истинное y(x) = {true_y_val:.5f}, Абсолютная ошибка = {absolute_error:.16f}")
+        print(f"x = {xs_h[i]:.5f}, Численное y(x) = {numerical_y_val:.10f}, Истинное y(x) = {true_y_val:.10f}, Абсолютная ошибка = {absolute_error:.16f}")
     print(f"\nМаксимальная абсолютная ошибка для шага h = {INITIAL_STEP_SIZE}: {total_error_h:.16f}")
 
     print("\n===================================================================")
@@ -326,14 +344,25 @@ def main():
     num_points_h2 = len(xs_h2)
     print(f"Сетка из {num_points_h2} точек с шагом h/2 = {half_step_size}.")
 
-    bc1_coeff_y0_h2 = -1/half_step_size
-    bc1_coeff_y1_h2 = 1/half_step_size
-    bc2_coeff_y_N_minus_1_h2 = -1/half_step_size
-    bc2_coeff_y_N_h2 = (half_step_size + 1)/half_step_size
+    bc1_coeff_y0_h2 = -2 + half_step_size**2 * q(A_INTERVAL)
+    bc1_coeff_y1_h2 = 2
+    
+    try:
+        p_B_h2 = p(B_INTERVAL)
+        q_B_h2 = q(B_INTERVAL)
+    except ZeroDivisionError as e:
+        print(f"Предупреждение: Проблема с коэффициентами p(x) или q(x) на правой границе {B_INTERVAL} для h/2: {e}")
+        p_B_h2 = p(B_INTERVAL)
+        q_B_h2 = q(B_INTERVAL)
+
+    bc2_coeff_y_N_minus_1_h2 = 2
+    bc2_coeff_y_N_h2 = -2 - 2*half_step_size - half_step_size**2 * p_B_h2 + half_step_size**2 * q_B_h2
+    bc2_rhs_h2 = half_step_size**2 * f(B_INTERVAL) + 1.5*half_step_size + 0.75 * half_step_size**2 * p_B_h2
+
 
     solution_y_h2 = solve_finite_difference(num_points_h2, xs_h2, half_step_size,
                                             A_b1=bc1_coeff_y0_h2, A_c1=bc1_coeff_y1_h2, b1=bc1_rhs,
-                                            A_an=bc2_coeff_y_N_minus_1_h2, A_bn=bc2_coeff_y_N_h2, bn=bc2_rhs)
+                                            A_an=bc2_coeff_y_N_minus_1_h2, A_bn=bc2_coeff_y_N_h2, bn=bc2_rhs_h2)
 
     max_error_h2 = 0.0
     for i in range(len(xs_h2)):
@@ -344,52 +373,12 @@ def main():
     print(f"\nМаксимальная абсолютная ошибка для шага h/2 = {half_step_size}: {max_error_h2:.16f}")
 
 
-    runge_error_value = calculate_runge_error(solution_y_h2, solution_y_h, 1)
-    print(f"Апостериорная оценка погрешности по Рунге: {runge_error_value:.16f}")
+    runge_error_value = calculate_runge_error(solution_y_h2, solution_y_h, 2)
+    print(f"Апостериорная оценка погрешности по Рунге (порядок O(h^2)): {runge_error_value:.16f}")
+    if max_error_h2 != 0:
+        print(f"Отношение ошибок E_h / E_{{h/2}} = {total_error_h / max_error_h2:.4f} (ожидается ~4 для O(h^2) метода).")
 
-    perform_condition_and_stiffness_analysis(A_INTERVAL, B_INTERVAL)
-
-    print("\n===================================================================")
-    print("ПРОВЕРКА ПО ТЕОРЕТИЧЕСКИМ ОЦЕНКАМ ПОГРЕШНОСТИ:")
-    print("Примечание: Представленные теоретические оценки погрешности")
-    print("  относятся к методу Рунге-Кутты 4-го порядка. Для метода конечных")
-    print("  разностей, используемого здесь, порядок точности равен O(h^2).")
-    print("  Формула, приводимая ниже, используется для сверки с требованиями эталонного теста.")
-    print("===================================================================")
-
-    try:
-        M4_val = get_true_solution_4th_derivative(A_INTERVAL) 
-        print(f"M4 (максимум модуля 4-й производной y(x) на [{A_INTERVAL}, {B_INTERVAL}]): {M4_val:.8e}")
-
-        H_STEP = INITIAL_STEP_SIZE
-        H_STEP_HALF = half_step_size
-
-        max_error_rungekutta_h = total_error_h 
-
-        theoretical_error_rungekutta_h = (B_INTERVAL - A_INTERVAL) / 2880 * (H_STEP ** 4) * M4_val
-        theoretical_error_rungekutta_h2 = (B_INTERVAL - A_INTERVAL) / 2880 * (H_STEP_HALF ** 4) * M4_val
-
-        print(f"\nТеоретическая оценка погрешности для Рунге-Кутты (p=4):")
-        print(f"\tПри шаге h = {H_STEP}:     E_theory = {theoretical_error_rungekutta_h:.8e}")
-        print(f"\tФактическая ошибка:   E_actual = {max_error_rungekutta_h:.8e}")
-        if max_error_rungekutta_h <= theoretical_error_rungekutta_h:
-            print("\t-> Фактическая ошибка меньше или равна теоретической оценке (GOOD).")
-        else:
-            print("\t-> Фактическая ошибка превышает теоретическую оценку (CAUTION).")
-
-        print(f"\tПри шаге h/2 = {H_STEP_HALF}: E_theory = {theoretical_error_rungekutta_h2:.8e}")
-        print(f"\tФактическая ошибка:   E_actual = {max_error_h2:.8e}")
-        if max_error_h2 <= theoretical_error_rungekutta_h2:
-            print("\t-> Фактическая ошибка меньше или равна теоретической оценке (GOOD).")
-        else:
-            print("\t-> Фактическая ошибка превышает теоретическую оценку (CAUTION).")
-
-    except ZeroDivisionError as e:
-        print(f"Ошибка при вычислении M4 или теоретической оценки: {e}")
-        print("    Невозможно выполнить теоретическую проверку погрешности из-за сингулярности 4-й производной.")
-    except Exception as e:
-        print(f"Произошла ошибка при расчете теоретической оценки погрешности: {e}")
-
+    # perform_condition_and_stiffness_analysis(A_INTERVAL, B_INTERVAL)
 
     true_y_values_for_plot = np.array([get_true_solution(x) for x in xs_h])
     

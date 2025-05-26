@@ -23,7 +23,6 @@ def is_symmetric_matrix(matrix) -> bool:
 
     return True
 
-# Позиция максимального элемента
 def find_max_upper_element(X):
     n = X.shape[0]
     i_max, j_max = 0, 1
@@ -38,7 +37,6 @@ def find_max_upper_element(X):
 
     return i_max, j_max
 
-# Норма матрицы
 def matrix_norm(X):
     norm = 0
 
@@ -48,7 +46,6 @@ def matrix_norm(X):
 
     return np.sqrt(norm)
 
-# Метод вращений
 def rotation_method(A_, eps):
     n = A_.shape[0]
     A = np.copy(A_)
@@ -71,7 +68,6 @@ def rotation_method(A_, eps):
         else:
             phi = 0.5 * np.arctan(2 * A[i_max][j_max] / (A[i_max][i_max] - A[j_max][j_max]))
 
-        # Матрица вращения
         U = np.eye(n)
         U[i_max][j_max] = -np.sin(phi)
         U[j_max][i_max] = np.sin(phi)
@@ -89,23 +85,31 @@ def rotation_method(A_, eps):
 def calculate_results(matrix, eps):
     try:
         A = np.copy(matrix)
+        n = A.shape[0]
 
-        # Выполняем метод вращений
         values, vectors, iters = rotation_method(A, eps)
 
-        # Формируем результат
         result_text = f"\nСобственные значения:\n{', '.join(map(str, values))}\n"
         result_text += "Собственные вектора:\n"
         for i in range(vectors.shape[0]):
             result_text += f"СВ {i + 1}: {vectors[:, i]}\n"
         result_text += f"Итераций: {iters}\n"
 
-        result_text += "\nПроверка:\n"
+        result_text += "\n---"
+        result_text += "\n**Проверки собственных значений и векторов:**\n"
 
-        result_text += f"След матрицы: {sum([matrix[i][i] for i in range(matrix.shape[0])])}\n"
-        result_text += f"Сумма собственных значений: {sum(values)}\n"
+        trace_matrix = np.trace(matrix)
+        sum_eigenvalues = sum(values)
+        result_text += f"След исходной матрицы: {trace_matrix}\n"
+        result_text += f"Сумма собственных значений: {sum_eigenvalues}\n"
+        if np.allclose(trace_matrix, sum_eigenvalues, atol=1e-6):
+            result_text += "INFO: Проверка: След матрицы равен сумме собственных значений. Пройдена.\n\n"
+        else:
+            result_text += "WARNING: Проверка: След матрицы не равен сумме собственных значений. Не пройдена.\n\n"
 
-        result_text += "\nПроверка уравнения A * v = λ * v для каждого собственного вектора:\n\n"
+
+        result_text += "---"
+        result_text += "\n**Проверка уравнения A * v = λ * v для каждого собственного вектора:**\n\n"
 
         for i in range(n):
             vec = vectors[:, i]
@@ -117,11 +121,9 @@ def calculate_results(matrix, eps):
             result_text += f"A * v = {lhs}\n"
             result_text += f"λ * v = {rhs}\n"
             if np.allclose(lhs, rhs, atol=1e-6):
-                result_text += "Проверка пройдена\n\n"
+                result_text += "INFO: Проверка: A * v = λ * v пройдена.\n\n"
             else:
-                result_text += "Проверка не пройдена\n\n"
-
-        result_text += "\nv_i - (v_i * A) / λ_i\n"
+                result_text += "WARNING: Проверка: A * v = λ * v не пройдена.\n\n"
 
         print(result_text)
 
