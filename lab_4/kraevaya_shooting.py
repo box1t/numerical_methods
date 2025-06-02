@@ -142,7 +142,7 @@ def plot_bvp_solution(xs: list, true_y_values: np.ndarray, numerical_solution: n
 
     plt.plot(xs, true_y_values, 'k-', linewidth=2, label="Истинное решение")
     plt.plot(xs, numerical_solution[:, 0], 'r--', linewidth=1.5, marker='o', markersize=4, 
-             markevery=max(1, len(xs)//10), label="Численное решение (Метод Стрельбы)")
+             markevery=max(1, len(xs)//10), label="Численное решение (Рунге, оптимальный по η)")
 
     plt.legend(fontsize=12)
     plt.grid(True, linestyle='--', alpha=0.7)
@@ -170,8 +170,6 @@ if __name__ == "__main__":
     if not xs:
         print("Ошибка: Список узлов xs пуст. Проверьте интервал и шаг.")
         sys.exit(1)
-
-    ys_rungekutta_ivp = solve_runge_kutta(xs, Y0_INITIAL_GUESS_FOR_RK, H_STEP, f, RK_P, RK_AS, RK_BS, RK_CS)
 
     print(f"\nРешение краевой задачи методом стрельбы с начальным условием y({A_INTERVAL})={Y0_INITIAL_GUESS_FOR_RK[0]}:")
     ys_shooting, iter_shooting, optimal_eta = solve_shooting_method(
@@ -202,11 +200,9 @@ if __name__ == "__main__":
             print(f"Ошибка при вычислении истинного решения в x={xs[i]}: {e}. Пропуск точки.")
             continue
 
-        error_rungekutta_ivp = abs(ys_rungekutta_ivp[i][0] - y_true)
         error_shooting = abs(ys_shooting[i][0] - y_true)
 
         print(f"xk = {xs[i]:.5g}, y_true(xk) = {y_true:.5g}")
-        print(f"        Рунге-Кутт: yk = {ys_rungekutta_ivp[i][0]:.5g}, e = {error_rungekutta_ivp:.16f}")
         print(f"        Стрельба:          yk = {ys_shooting[i][0]:.5g}, e = {error_shooting:.16f}")
 
     H_STEP_HALF = H_STEP / 2
@@ -217,13 +213,10 @@ if __name__ == "__main__":
 
     print(f"\nПовторное решение методом стрельбы для шага h/2 = {H_STEP_HALF} (для оценки погрешности по Рунге):")
     
-    original_stdout = sys.stdout
-    sys.stdout = open(os.devnull, 'w')
     ys_shooting_half, iter_shooting_half, _ = solve_shooting_method(
         xs_half, Y0_INITIAL_GUESS_FOR_RK[0], H_STEP_HALF, EPSILON, f, get_target_boundary_condition_value,
         RK_P, RK_AS, RK_BS, RK_CS, verbose=True
     )
-    sys.stdout = original_stdout
     print(f"Итераций для h/2: {iter_shooting_half}")
 
     print("\n===================================================================")
@@ -239,7 +232,7 @@ if __name__ == "__main__":
     }
     plot_bvp_solution(xs, true_y_values_for_plot, ys_shooting,
                           OUTPUT_DIRECTORY, '4.2_shooting_.png',
-                          f"Решение краевой задачи методом стрельбы (h={H_STEP})")
+                          f"Решение кр. задачи методом Рунге-Кутты с оптимальным η по методу стрельбы (h={H_STEP})")
     
     print("\n===================================================================")
     print("Завершение выполнения программы.")

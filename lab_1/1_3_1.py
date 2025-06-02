@@ -1,6 +1,6 @@
 # Метод простых итераций
-import numpy as np
 
+import numpy as np
 
 def print_matrix(matrix):
     for row in matrix:
@@ -17,7 +17,7 @@ def check_matrix_for_simple_iteration(matrix):
     n = len(matrix)
     diagonal_dominance_satisfied = True
     
-    print("\n--- Проверка условий сходимости метода простой итерации ---")
+    print("\n--- Проверка условий применимости метода простой итерации ---")
 
     for i in range(n):
         if matrix[i][i] == 0:
@@ -34,7 +34,10 @@ def check_matrix_for_simple_iteration(matrix):
                 if h == i:
                     continue
                 temp_matrix = matrix.copy()
-                temp_matrix[[i, h]] = temp_matrix[[h, i]] 
+                temp_row_i = temp_matrix[i].copy()
+                temp_row_h = temp_matrix[h].copy()
+                temp_matrix[i] = temp_row_h
+                temp_matrix[h] = temp_row_i
                 
                 diag_dom_after_swap = True
                 for k in range(n):
@@ -51,13 +54,15 @@ def check_matrix_for_simple_iteration(matrix):
                     break
             
             if not found and not diagonal_dominance_satisfied: 
-                print("ОШИБКА: Невозможно добиться диагонального преобладания путем перестановки строк.")
+                print("ИНФОРМАЦИЯ: Не удалось добиться диагонального преобладания путем перестановки строк. Метод может быть применен, но сходимость не гарантирована.")
                 return False
         else:
             print(f"ИНФОРМАЦИЯ: Для строки {i} условие диагонального преобладания выполняется: |A[{i}][{i}]| = {abs(matrix[i][i]):.6f} >= Сумма остальных элементов в строке = {row_sum:.6f}")
 
     if diagonal_dominance_satisfied:
-        print("ИНФОРМАЦИЯ: Условие диагонального преобладания выполняется .")
+        print("ИНФОРМАЦИЯ: Условие диагонального преобладания выполняется для всей матрицы.")
+    else:
+        print("ПРЕДУПРЕЖДЕНИЕ: Условие диагонального преобладания не выполняется для всей матрицы. Это достаточное условие, его невыполнение не означает расходимости метода. Продолжаем работу.")
     
     return diagonal_dominance_satisfied
 
@@ -108,12 +113,30 @@ def find_matrix_norm(matrix):
 
 
 def check_answer(matrix, n, results):
-    print("\nМой ответ          Реальный ответ")
+    print("\n--- Проверка решения ---")
+    print("Мой ответ          Реальный ответ")
 
     for i in range(n):
         computed = sum(matrix[i][j] * results[j] for j in range(n))
 
         print(f"{computed:.6f}          {matrix[i][n]:.6f}")
+
+def check_linear_independence(A):
+    """
+    Проверяет линейную зависимость/независимость строк матрицы A.
+    """
+    rank = np.linalg.matrix_rank(A)
+    num_rows = A.shape[0]
+    print(f"\n--- Проверка линейной независимости ---")
+    print(f"Ранг матрицы A: {rank}")
+    print(f"Количество строк в матрице A: {num_rows}")
+
+    if rank == num_rows:
+        print("ИНФОРМАЦИЯ: Система линейно независима (строки матрицы A не являются линейными комбинациями друг друга).")
+        return True
+    else:
+        print("ОШИБКА: Система линейно зависима (хотя бы одна строка матрицы A является линейной комбинацией других).")
+        return False
 
 
 def main():
@@ -134,73 +157,81 @@ def main():
     else:
         print("ИНФОРМАЦИЯ: det(A) != 0, система имеет единственное решение.")
 
+    if not check_linear_independence(A):
+        print("Метод простых итераций не может быть применен к линейно зависимой системе, которая не имеет единственного решения.")
+        exit(1) 
+
     A_extended = np.column_stack((A, b))
 
-    if not check_matrix_for_simple_iteration(A_extended):
-        print("ОШИБКА: Матрица не удовлетворяет условию диагонального преобладания или его нельзя добиться перестановкой строк. Метод простой итерации не может быть применен.")
-        exit(1)
+    diag_dominance_satisfied = check_matrix_for_simple_iteration(A_extended)
 
     matrix_c_f = get_matrix_c_f_for_simple_iteration(A_extended)
     print("\nМатрица Альфа и Вектор Бета:")
     print_matrix(matrix_c_f)
 
     vector_result = np.zeros(n)
+    ##########     print("\n--- Выполнение итераций метода PI---")
 
     counter = 0
     matrix_norm = find_matrix_norm(matrix_c_f[:, :-1]) 
 
-    print("\n--- Проверка условия сходимости по норме матрицы  ---")
+    print("\n--- Проверка условий сходимости метода простой итерации ---")
     if matrix_norm < 1:
-        print(f"ИНФОРМАЦИЯ: ||α|| = {matrix_norm:.6f} < 1. Достаточное условие сходимости по теореме 1 выполняется. Метод простой итерации гарантированно сходится.")
+        print(f"ИНФОРМАЦИЯ: ||α|| = {matrix_norm:.6f} < 1. Достаточное условие сходимости по норме матрицы выполняется. Метод простой итерации гарантированно сходится.")
         
     else:
-        print(f"ПРЕДУПРЕЖДЕНИЕ: ||α|| = {matrix_norm:.6f} >= 1. Достаточное условие сходимости НЕ выполняется. Метод простой итерации может не сходиться.")
+        print(f"ПРЕДУПРЕЖДЕНИЕ: ||α|| = {matrix_norm:.6f} >= 1. Достаточное условие сходимости по норме матрицы НЕ выполняется. Невыполнение достаточности не означает расходимости.")
+        
         eigenvalues = np.linalg.eigvals(matrix_c_f[:, :-1])
         max_abs_eigenvalue = np.max(np.abs(eigenvalues))
-        print(f"ИНФОРМАЦИЯ: |λ_max| = {max_abs_eigenvalue:.6f}")
+        print(f"ИНФОРМАЦИЯ: Спектральный радиус ρ(α) = |λ_max| = {max_abs_eigenvalue:.6f}")
+        
         if max_abs_eigenvalue < 1:
-            print("ИНФОРМАЦИЯ: |λ_max| < 1. Необходимое и достаточное условие сходимости выполняется. Метод простой итерации сходится.")
+            print("ИНФОРМАЦИЯ: ρ(α) < 1. Необходимое и достаточное условие сходимости выполняется. Метод простой итерации сходится.")
         else:
-            print("ОШИБКА: |λ_max| >= 1. Необходимое и достаточное условие сходимости НЕ выполняется. Метод простой итерации расходится.")
+            print("ОШИБКА: ρ(α) >= 1. Необходимое и достаточное условие сходимости НЕ выполняется. Метод простой итерации расходится.")
             exit(1)
 
-    e_k = 1 # Оценка погрешности
-    x_prev = vector_result.copy() # x^(k-1)
+    e_k = 1 
+    x_prev = vector_result.copy() 
     
     print("\n--- Выполнение итерационного процесса ---")
     while True:
-        x_curr = get_next_vector_of_x(matrix_c_f, x_prev) # x^(k)
+        x_curr = get_next_vector_of_x(matrix_c_f, x_prev) 
 
-        diff_norm = get_max_diff_for_two_vectors(x_curr, x_prev) # ||x^(k) - x^(k-1)||
+        diff_norm = get_max_diff_for_two_vectors(x_curr, x_prev) 
 
         if matrix_norm < 1: 
             e_k = (matrix_norm / (1 - matrix_norm)) * diff_norm
             if e_k <= eps:
                 vector_result = x_curr
+                print(f"ИНФОРМАЦИЯ: Критерий остановки по Теореме 2 (оценка погрешности {e_k:.6f} <= eps {eps:.6f}) выполнен на итерации {counter}.")
                 break
         else: 
             if diff_norm <= eps: 
                 vector_result = x_curr
+                print(f"ИНФОРМАЦИЯ: Критерий остановки ||x^(k) - x^(k-1)|| < epsilon ({diff_norm:.6f} < {eps:.6f}) выполнен на итерации {counter}.")
+                print("ПРЕДУПРЕЖДЕНИЕ: Достаточное условие сходимости ||α|| < 1 не выполняется, достижение заданной точности не гарантируется.")
                 break
 
         x_prev = x_curr.copy()
         counter += 1
         
-        if counter > 1000 and diff_norm > 1e-5: 
-            print("ПРЕДУПРЕЖДЕНИЕ: Превышено максимальное количество итераций (1000). Метод, возможно, расходится или сходится очень медленно.")
+        if counter > 10000 and diff_norm > 1e-5: 
+            print("ПРЕДУПРЕЖДЕНИЕ: Превышено максимальное количество итераций (10000). Метод, возможно, сходится очень медленно или не сходится.")
+            vector_result = x_curr 
             break
 
-
-    print(f"\nРезультат:")
+    ##########
+    print(f"\n--- Результат ---")
     print_vector(vector_result)
 
     check_answer(A_extended, n, vector_result)
 
-    print(f"\nПодсчет количества итераций по теореме 2:")
-    print("     Если ||α|| < 1, имеет место оценка погрешности:")
-    print("||eps(k)|| <= ||α|| *||x(k) - x(k-1)|| / ( 1 - ||α|| )")
-    print(f"\nКоличество итераций: {counter}.")
-
+    print(f"\n--- Дополнительная информация ---")
+    print(f"Количество итераций: {counter}.")
+    if matrix_norm < 1:
+        print("     Оценка погрешности по теореме 2: ||eps(k)|| <= ||α|| * ||x(k) - x(k-1)|| / ( 1 - ||α|| )")
 
 if __name__ == '__main__':
     main()
