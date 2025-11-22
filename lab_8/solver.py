@@ -1,10 +1,7 @@
 import os
-
-os.environ["QT_LOGGING_RULES"] = "qt.qpa.wayland=false;qt.qpa.socketnotifier=false"
-
 import math
-from copy import deepcopy
 
+from copy import deepcopy
 from visual import visualise
 from tridiag import TRIDIAG_SOLVER
 

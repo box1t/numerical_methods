@@ -1,4 +1,3 @@
-import os
 from copy import deepcopy
 
 class TRIDIAG_SOLVER:
@@ -8,32 +7,6 @@ class TRIDIAG_SOLVER:
         self._c = deepcopy(c)
         self._d = deepcopy(d)
         self._n = len(d)
-
-    # def read_from_file(self, name):
-    #     """Ввести матрицу из файла"""
-    #     PATH = os.path.split(os.path.realpath(__file__))[0] + "/" + name
-    #     with open(PATH, "r") as f:
-    #         lines = f.readlines()
-    #         self._n = len(lines)
-
-    #         line_stripped = lines[0].strip().split(' ')
-    #         self._a.append(0)
-    #         self._b.append(float(line_stripped[0]))
-    #         self._c.append(float(line_stripped[1]))
-    #         self._d.append(float(line_stripped[2]))
-
-    #         for i in range(1,self._n-1):
-    #             line_stripped = lines[i].strip().split(' ')
-    #             self._a.append(float(line_stripped[0]))
-    #             self._b.append(float(line_stripped[1]))
-    #             self._c.append(float(line_stripped[2]))
-    #             self._d.append(float(line_stripped[3]))
-
-    #         line_stripped = lines[self._n-1].strip().split(' ')
-    #         self._a.append(float(line_stripped[0]))
-    #         self._b.append(float(line_stripped[1]))
-    #         self._c.append(0)
-    #         self._d.append(float(line_stripped[2]))
 
     def check_conditions(self):
         """Проверить корректность и устойчивость."""
@@ -85,21 +58,10 @@ class TRIDIAG_SOLVER:
 if __name__ == "__main__":
     solver = TRIDIAG_SOLVER()
 
-#     # решение с вводом через файл
-
-#     # solver.read_from_file("tridiag_try.txt") 
-    
-#     # result = solver.solve()
-#     # for i in range (len(result)):
-#     #     print(f"x_{i} = {round(result[i],3)}\n")
-
-#     # решение с вводом из кода
-
     a = [0, -1, -9, -1, 9]
     b = [-6, 13, -15, -7, -18]
     c = [5, 6, -4, 1, 0]
     d = [51, 100, -12, 47, -90]
-
 
     solver = TRIDIAG_SOLVER(a,b,c,d)
 

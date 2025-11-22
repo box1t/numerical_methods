@@ -1,16 +1,13 @@
-import matplotlib.pyplot as plt
 import os
-from natsort import natsorted
-
-DATA_FOLDER = "results"
-PATH = os.path.join(os.path.split(os.path.realpath(__file__))[0], DATA_FOLDER)
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
-import os
 from natsort import natsorted
+
+DATA_FOLDER = "results"
+PATH = os.path.join(os.path.split(os.path.realpath(__file__))[0], DATA_FOLDER)
 
 def visualise(path):
 

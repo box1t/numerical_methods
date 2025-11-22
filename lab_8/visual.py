@@ -1,8 +1,9 @@
+import os
 import matplotlib.pyplot as plt
 import numpy as np
+
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
-import os
 from natsort import natsorted
 
 def visualise(path: str, title: str = "График", num_plots: int = 3, round_t = 3):

@@ -1,11 +1,7 @@
 import os
-
-os.environ["QT_LOGGING_RULES"] = "qt.qpa.wayland=false;qt.qpa.socketnotifier=false"
-
 import math
-from copy import deepcopy
-import sys
 
+from copy import deepcopy
 from tridiag import TRIDIAG_SOLVER
 from visual import visualise
 
@@ -81,21 +77,30 @@ class PARAB_SOLVER:
         pogr = self._pogr_step(u, cur_true)
         self._write_res(u, cur_true,  t, num, pogr)
 
-    def solve(self, scheme_type: int = 1, approx_type: int = 1, cron_param = 0.5):
+# где следует добавить проверку условия устойчивости?
+# как измеряется "n-точечность" аппроксимации? почему здесь везде 2-точечная?
+    def solve(self, scheme_type: int = 1, approx_type: int = 1, theta = 0.5):
         """
         Вычислить и сохранить решение.
 
-        Схема scheme_type: 1 - явная, 2 - неявная, 3 - Кранка-Николсона.
+        Тип схемы scheme_type: 1 - явная, 2 - неявная, 3 - Кранка-Николсона.
 
-        Аппроксимация approx_type: 1 - 1п2т, 2 - 2п3т, 3 - 2п2т.
+        Тип аппроксимации approx_type: 1 - 2точ1пор, 2 - 3точ2пор, 3 - 2точ2пор.
 
-        Параметр схемы Кранка-Николсона cron_param: [0;1]
+        Вес в схеме Кранка-Николсона theta: [0;1]
         """
 
-        if scheme_type not in [1,2,3] and approx_type not in [1,2,3] and cron_param >= 0 and cron_param <= 1:
+        if scheme_type not in [1,2,3] and approx_type not in [1,2,3] and theta >= 0 and theta <= 1:
             raise ValueError("Неверно указаны параметры решателя!")
 
         self._cleanup_dir()
+        # почему сначала ищется u_cur, учитывая тип аппроксимации? верно ли понимаю, что это формулы 5.38 и 5.39, из которых достаем u_j_k?
+        # если это так, тогда остаточный член вычитается как часть нач условия?
+        # почему в явной схеме вычитаемое меньше, чем в неявной? в чем разница между tau^2 и tau? верно ли понимаю, что взятие второй производной по tau сводит слагаемое к нулю?
+        #  
+        # почему для аппроксимации вычитаем из значения функции в t=0 значение в t=1?
+        # почему изначально делаем u_cur = u_prev?
+        # при первом типе аппроксимации / втором цикл распространяется только для начального условия? или как это работает?
 
         u = [self._start_cond(i*self._xd) for i in range(0, self._n+1)]
 
@@ -104,37 +109,49 @@ class PARAB_SOLVER:
         if scheme_type == 1:
 
             for j in range (1, self._t_steps+1):
-                cur_t = j*self._td
+                cur_t = j * self._td
                 for i in range(1, self._n):
                     cur_x = self._xd*i
 
                     u[i] = u_prev[i] + self._td*(u_prev[i+1]-2*u_prev[i]+u_prev[i-1])/(self._xd**2) \
                         + 0.5*self._td*math.exp(-0.5*(cur_t-self._td))*math.sin(cur_x)
 
+                # использует ближайшую (к началу) точку сетки для аппроксимации производной на границах сетки. 
+                # отсюда находятся значения сеточной функции на границах. разность берется по формуле конечной разности: текущее знач. - предыдущее знач.
+                
                 if approx_type == 1:
                     u[0] = u[1] - self._xd*math.exp(-0.5*cur_t)
                     u[self._n] = u[self._n-1] - self._xd*math.exp(-0.5*cur_t)
 
+                
+                # используется центральная разность.
+                # 3-ья точка - дополнительная фиктивная вне расчетной области. 
+                # где логично применять трехточечную? удобно ли это? 
+
+
+                # 3точ2пор
                 elif approx_type == 2:
-                    u[0] = 1/3*(4*u[1] - u[2] - 2*self._xd*math.exp(-0.5*cur_t))
-                    u[self._n] = 1/3*(-u[self._n-2] + 4*u[self._n-1] - 2*self._xd*math.exp(-0.5*cur_t))
+                    u[0] = 1/3 * (4 * u[1] - u[2] - 2 * self._xd * math.exp(-0.5 * cur_t))
+                    u[self._n] = 1/3 * (-u[self._n-2] + 4 * u[self._n-1] - 2 * self._xd * math.exp(-0.5 * cur_t))
+
+                # самый сложный вариант. 2точ2пор, но учитывает значение функции в нач. точке и еще в двух соседних точках.
 
                 elif approx_type == 3:
-                    u[0] = u[1] - self._xd*math.exp(-0.5*cur_t) + self._xd**2/2*u_prev[0]/self._td
-                    u[0] /= 1 + (self._xd**2)/(2*self._td)
+                    u[0] = u[1] - self._xd*math.exp(-0.5 * cur_t) + self._xd**2 / 2 * u_prev[0]/self._td
+                    u[0] /= 1 + (self._xd ** 2) / (2 * self._td)
 
-                    u[self._n] = u[self._n-1] - self._xd*math.exp(-0.5*cur_t) \
-                        + self._xd**2/2*(u_prev[self._n]/self._td)
-                    u[self._n] /= 1 + (self._xd**2)/(2*self._td)
+                    u[self._n] = u[self._n-1] - self._xd*math.exp(-0.5 * cur_t) \
+                        + self._xd**2 / 2 * (u_prev[self._n] / self._td)
+                    u[self._n] /= 1 + (self._xd**2) / (2 * self._td)
 
                 u_prev = deepcopy(u)
 
                 self._post_solution(u, cur_t, j)
 
         else:
-            param = 1
+            theta = 1
             if scheme_type == 3:
-                param = 0.5
+                theta = 0.5
 
             for j in range (1, self._t_steps+1):
                 cur_t = j*self._td
@@ -143,47 +160,41 @@ class PARAB_SOLVER:
                 for i in range(1, self._n):
                     cur_x = self._xd*i
 
-                    a[i] = -self._td*param
-                    b[i] = self._xd**2 + 2*self._td*param
-                    c[i] = -self._td*param
-                    d[i] = u[i]*(self._xd**2) + self._td*(1-param)*(u[i+1]-2*u[i]+u[i-1]) \
-                        + 0.5*(self._xd**2)*self._td*math.sin(cur_x)*(param*math.exp(-0.5*cur_t)+(1-param)*math.exp(-0.5*(cur_t-self._td)))
+                    a[i] = -self._td*theta
+                    b[i] = self._xd ** 2 + 2 * self._td*theta
+                    c[i] = -self._td * theta
+                    d[i] = u[i]*(self._xd ** 2) + self._td * (1 - theta) * (u[i+1] - 2 * u[i] + u[i-1]) \
+                        + 0.5 * (self._xd ** 2) * self._td * math.sin(cur_x) * (theta * math.exp(-0.5 * cur_t)+(1 - theta) * math.exp(-0.5 * (cur_t - self._td)))
 
                 if approx_type == 1:
                     b[0] = -1
                     c[0] = 1
-                    d[0] = self._xd*math.exp(-0.5*cur_t)
+                    d[0] = self._xd*math.exp(-0.5 * cur_t)
 
                     a[self._n] = -1
                     b[self._n] = 1
-                    d[self._n] = -self._xd*math.exp(-0.5*cur_t)
+                    d[self._n] = -self._xd*math.exp(-0.5 * cur_t)
 
                 elif approx_type == 2:
-                    b[0] = -3 - a[1] / self._td / param
-                    c[0] = 4 - b[1] / self._td / param
-                    d[0] = 2*self._xd*math.exp(-0.5*cur_t) - d[1] / self._td / param
+                    b[0] = -3 - a[1] / self._td / theta
+                    c[0] = 4 - b[1] / self._td / theta
+                    d[0] = 2 * self._xd*math.exp(-0.5 * cur_t) - d[1] / self._td / theta
 
-                    a[self._n] = -4 + b[self._n-1] / self._td / param
-                    b[self._n] = 3 + c[self._n-1] / self._td / param
-                    d[self._n] = -2*self._xd*math.exp(-0.5*cur_t) + d[self._n-1] / self._td / param
+                    a[self._n] = -4 + b[self._n-1] / self._td / theta
+                    b[self._n] = 3 + c[self._n-1] / self._td / theta
+                    d[self._n] = -2*self._xd*math.exp(-0.5*cur_t) + d[self._n-1] / self._td / theta
 
                 elif approx_type == 3:
-                    b[0] = 1 + (self._xd**2)/(2*self._td)
+                    b[0] = 1 + (self._xd ** 2) / (2 * self._td)
                     c[0] = -1
-                    d[0] = -self._xd*math.exp(-0.5*cur_t)
+                    d[0] = -self._xd*math.exp(-0.5 * cur_t)
 
                     a[self._n] = -1
-                    b[self._n] = 1 + (self._xd**2)/(2*self._td)
-                    d[self._n] = - self._xd*math.exp(-0.5*cur_t) \
-                        + self._xd**2/2*(u_prev[self._n]/self._td)
+                    b[self._n] = 1 + (self._xd ** 2) / (2 * self._td)
+                    d[self._n] = - self._xd * math.exp(-0.5 * cur_t) \
+                        + self._xd ** 2 / 2 * (u_prev[self._n] / self._td)
 
                 progon = TRIDIAG_SOLVER(a,b,c,d)
-                
-                # try:
-                #     u = progon.solve()
-                # except Exception as e:
-                #     print(e)
-                #     sys.exit(1)
 
                 u = progon.solve()
 
