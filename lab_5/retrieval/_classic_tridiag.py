@@ -18,12 +18,11 @@ class TRIDIAG_SOLVER:
     def check_solution(self, x):
         """Проверить решение на правильность."""
         calc_d = []
-        calc_d.append(self._b[0] * x[0] + self._c[0] * x[1])
+        calc_d.append(self._b[0]*x[0]+self._c[0]*x[1])
         
         for i in range(1,self._n-1):
-            calc_d.append(self._a[i] * x[i-1] + self._b[i] * x[i] + self._c[i] * x[i+1])
-        
-        calc_d.append(self._a[self._n-1] * x[self._n-2] + self._b[self._n - 1] * x[self._n - 1])
+            calc_d.append(self._a[i]*x[i-1]+self._b[i]*x[i]+self._c[i]*x[i+1])
+        calc_d.append(self._a[self._n-1]*x[self._n-2]+self._b[self._n-1]*x[self._n-1])
         
         for i in range (self._n):
             diff = calc_d[i] - self._d[i]
@@ -33,24 +32,17 @@ class TRIDIAG_SOLVER:
 
     def solve(self):
         """Решить методом прогонки."""
-        # if self.check_conditions() == False:
-        #     #print("Не выполняется проверка!")
-        #     raise(ValueError("Не выполняется диагональное преобладание!"))
         A = []
         B = []
         x = [0 for _ in range(self._n)]
-        A.append(-self._c[0]/ self._b[0])
-        B.append(self._d[0]/ self._b[0])
-        
-        for i in range (1, self._n):
-            A.append(-self._c[i] / (self._b[i] + self._a[i] * A[i-1]))
-            B.append((self._d[i] - self._a[i] * B[i-1]) / (self._b[i] + self._a[i] * A[i-1]))
-        
+        A.append(-self._c[0]/self._b[0])
+        B.append(self._d[0]/self._b[0])
+        for i in range (1,self._n):
+            A.append(-self._c[i]/(self._b[i]+self._a[i]*A[i-1]))
+            B.append((self._d[i]-self._a[i]*B[i-1])/(self._b[i]+self._a[i]*A[i-1]))
         x[self._n-1] = B[self._n-1]
-        
         for i in range (self._n-2, -1, -1):
             x[i] = A[i]*x[i+1]+B[i]
-        
         if (self.check_solution(x)): 
             return x
         else:
@@ -70,7 +62,7 @@ if __name__ == "__main__":
     d = [51, 100, -12, 47, -90]
 
 
-    solver = TRIDIAG_SOLVER(a, b, c, d)
+    solver = TRIDIAG_SOLVER(a,b,c,d)
 
     result = solver.solve()
     for i in range (len(result)):
