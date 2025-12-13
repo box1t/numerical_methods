@@ -8,7 +8,6 @@ from natsort import natsorted
 
 def visualise(path: str, title: str = "График", num_plots: int = 3, round_t = 3):
 
-
     data_files = [file for file in os.listdir(path) if file.endswith(".txt") and file[0]!='p']
 
     data_files = natsorted(data_files)

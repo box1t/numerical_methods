@@ -120,6 +120,10 @@ class PARAB_PDE:
                 u[1:self._n] = u_prev[1:self._n] + r * (u_prev[2:self._n + 1] - 2 * u_prev[1:self._n] + u_prev[0:self._n - 1]) \
                                + source_term
 
+#                     u[i] = u_prev[i] + self._td*(u_prev[i+1]-2*u_prev[i]+u_prev[i-1])/(self._xd**2) \
+#                         + 0.5*self._td*math.exp(-0.5*(cur_t-self._td))*math.sin(cur_x)
+
+
                 exp_term = math.exp(-0.5 * cur_t)
 
                 if approx_type == 1:
@@ -128,7 +132,10 @@ class PARAB_PDE:
 
                 elif approx_type == 2:
                     u[0] = 1 / 3 * (4 * u[1] - u[2] - 2 * self._xd * exp_term)
-                    u[self._n] = 1 / 3 * (-u[self._n - 2] + 4 * u[self._n - 1] - 2 * self._xd * exp_term)
+                    u[self._n] = 1 / 3 * (4 * u[self._n - 1] - u[self._n - 2] - 2 * self._xd * exp_term)
+
+#                     u[0] = 1/3 * (4 * u[1] - u[2] - 2 * self._xd * math.exp(-0.5 * cur_t))
+#                     u[self._n] = 1/3 * (4 * u[self._n-1] - u[self._n-2] - 2 * self._xd * math.exp(-0.5 * cur_t))
 
                 elif approx_type == 3:
                     u[0] = (u[1] - self._xd * exp_term + self._xd**2 / (2 * self._td) * u_prev[0]) \
@@ -136,6 +143,14 @@ class PARAB_PDE:
 
                     u[self._n] = (u[self._n - 1] - self._xd * exp_term + self._xd**2 / (2 * self._td) * u_prev[self._n]) \
                         / (1 + (self._xd**2) / (2 * self._td))
+
+#                     u[0] = u[1] - self._xd*math.exp(-0.5 * cur_t) + self._xd**2 / 2 * u_prev[0]/self._td
+#                     u[0] /= 1 + (self._xd ** 2) / (2 * self._td)
+
+#                     u[self._n] = u[self._n-1] - self._xd*math.exp(-0.5 * cur_t) \
+#                         + self._xd**2 / 2 * (u_prev[self._n] / self._td)
+#                     u[self._n] /= 1 + (self._xd**2) / (2 * self._td)
+
 
                 u_prev = np.copy(u)
                 self._post_solution(u, cur_t, j, save_path) 
@@ -161,7 +176,8 @@ class PARAB_PDE:
                 a[1:self._n] = -r_theta
                 b[1:self._n] = 1 + 2 * r_theta
                 c[1:self._n] = -r_theta
-                                
+
+                
                 source_term = 0.5 * self._td * np.sin(x_coords[1:self._n]) * \
                               (theta * math.exp(-0.5 * cur_t) + (1 - theta) * math.exp(-0.5 * (cur_t - self._td)))
                 
@@ -219,13 +235,13 @@ class PARAB_PDE:
 if __name__ == "__main__":
     solver = PARAB_PDE()
     
-    path_explicit = os.path.join(DATA_PATH, 'explicit_appr1')
-    path_implicit = os.path.join(DATA_PATH, 'implicit_appr1')
-    path_crank_n = os.path.join(DATA_PATH, 'crank_n_appr1')
+    path_explicit = os.path.join(DATA_PATH, 'explicit')
+    path_implicit = os.path.join(DATA_PATH, 'implicit')
+    path_crank_n = os.path.join(DATA_PATH, 'crank_n')
     
-    solver.solve(save_path=path_explicit, scheme_type=1, approx_type=2) 
-    solver.solve(save_path=path_implicit, scheme_type=2, approx_type=2)
-    solver.solve(save_path=path_crank_n, scheme_type=3, approx_type=2)
+    solver.solve(save_path=path_explicit, scheme_type=1, approx_type=3) 
+    solver.solve(save_path=path_implicit, scheme_type=2, approx_type=3)
+    solver.solve(save_path=path_crank_n, scheme_type=3, approx_type=3)
     
     visual_paths = {
         'Явная': path_explicit,
