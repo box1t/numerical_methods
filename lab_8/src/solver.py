@@ -128,7 +128,11 @@ class DIM_SOLVER:
 
                 # Выбираем направление для неявной схемы
                 for j in range(1, self._ny):
-                    a = [0]*(self._nx-1); b = [0]*(self._nx-1); c = [0]*(self._nx-1); d = [0]*(self._nx-1)
+                    
+                    a = [0]*(self._nx-1); 
+                    b = [0]*(self._nx-1); 
+                    c = [0]*(self._nx-1); 
+                    d = [0]*(self._nx-1)
                         
                     for i in range(self._nx-1):
 
@@ -151,7 +155,7 @@ class DIM_SOLVER:
                         u[j][i] = progon_solution[i-1]
 
                 u_prev = deepcopy(u)
-
+##########################################################################################################
                 cur_t += 0.5*self._td
 
                 # Левая и правая границы
@@ -165,7 +169,11 @@ class DIM_SOLVER:
                     u[self._ny][i] = self._edge_top(self._xd*i, cur_t)
 
                 for i in range(1, self._nx):
-                    a = [0]*(self._ny-1); b = [0]*(self._ny-1); c = [0]*(self._ny-1); d = [0]*(self._ny-1)
+
+                    a = [0]*(self._ny-1); 
+                    b = [0]*(self._ny-1); 
+                    c = [0]*(self._ny-1); 
+                    d = [0]*(self._ny-1)
                         
                     for j in range(self._ny-1):
 
@@ -232,7 +240,7 @@ class DIM_SOLVER:
                         u[j][i] = progon_solution[i-1]
 
                 u_prev = deepcopy(u)
-
+##########################################################################################################
                 cur_t += 0.5*self._td
 
                 # Левая и правая границы

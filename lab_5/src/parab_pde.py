@@ -239,9 +239,9 @@ if __name__ == "__main__":
     path_implicit = os.path.join(DATA_PATH, 'implicit')
     path_crank_n = os.path.join(DATA_PATH, 'crank_n')
     
-    solver.solve(save_path=path_explicit, scheme_type=1, approx_type=3) 
-    solver.solve(save_path=path_implicit, scheme_type=2, approx_type=3)
-    solver.solve(save_path=path_crank_n, scheme_type=3, approx_type=3)
+    solver.solve(save_path=path_explicit, scheme_type=1, approx_type=1) 
+    solver.solve(save_path=path_implicit, scheme_type=2, approx_type=1)
+    solver.solve(save_path=path_crank_n, scheme_type=3, approx_type=1)
     
     visual_paths = {
         'Явная': path_explicit,

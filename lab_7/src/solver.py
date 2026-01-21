@@ -22,13 +22,13 @@ class ELLIP_SOLVER:
         """
 
         self._path = saving_path
-        
+
         self._nx = x_steps
         self._ny = y_steps
-        
+
         self._xd = math.pi / 2 / self._nx
         self._yd = math.pi / 2 / self._ny
-        
+
         self._x_coords = np.linspace(0, math.pi / 2, self._nx + 1)
         self._y_coords = np.linspace(0, math.pi / 2, self._ny + 1)
 
@@ -81,7 +81,7 @@ class ELLIP_SOLVER:
         pogr = self._pogr_step(u, cur_true)
         self._write_res(u, cur_true, iter, pogr)
 
-    def solve(self, scheme_type: int = 3, eps: float = 1e-3, interpol: bool = True, w: float = 1.5):
+    def solve(self, scheme_type: int = 3, eps: float = 1e-5, interpol: bool = True, w: float = 1.5):
         """
         Вычислить и сохранить решение.
 
@@ -106,7 +106,7 @@ class ELLIP_SOLVER:
         u[self._ny, :] = self._start_top(self._x_coords) 
 
         # Левая (i=0) и правая (i=nx) границы
-        u[:, 0] = self._start_left(self._y_coords) 
+        u[:, 0] = self._start_left(self._y_coords)
         u[:, self._nx] = self._start_right(self._y_coords) 
 
 
@@ -114,9 +114,7 @@ class ELLIP_SOLVER:
         if interpol:
             for j in range(1, self._ny):
                 for i in range(1, self._nx):
-                    # Угловые точки нижней границы
                     u_bottom_interpolated = (u[0, 0] * (self._nx+1-i) + u[0, self._nx] * i) / (self._nx + 1) 
-                    # Угловые точки верхней границы
                     u_top_interpolated = (u[self._ny, 0] * (self._nx+1-i) + u[self._ny, self._nx] * i) / (self._nx + 1)
                     # Линейная интерполяция
                     u[j, i] = (u_bottom_interpolated * (self._ny+1-j) + u_top_interpolated * j) / (self._ny + 1)
@@ -131,9 +129,9 @@ class ELLIP_SOLVER:
         hx2 = self._xd**2
         hy2 = self._yd**2
         denom_mpi = 2 / hx2 + 2 / hy2 - 2
-        denom_gs_sor = 2 / hx2 + 2 / hy2
+        denom_seidel = 2 / hx2 + 2 / hy2
 
-        if scheme_type == 1: # МПИ (Jacobi)
+        if scheme_type == 1: # МПИ
 
             while (end_crit > eps):
 
@@ -157,24 +155,24 @@ class ELLIP_SOLVER:
 
             print(f"Закончили вычисления на итерации {cur_iter-1} с значением критерия остановки {end_crit}")
 
-        else: # Зейдель (Gauss-Seidel) или Верхняя релаксация (SOR)
+        else: # Зейдель / (SOR)
             
-            param = 1.0 # Зейдель
+            param = 1.0 # Полная релаксация
 
             if scheme_type == 3:
-                param = w # Верхняя релаксация
+                param = w 
 
             while (end_crit > eps):
                 
-                # Итерация Зейделя/SOR: неявное вычисление, использует новые значения u[j, i-1] и u[j-1, i]
+                # Зейдель / SOR: неявное вычисление, использует новые значения u[j, i-1] и u[j-1, i]
                 for j in range(1, self._ny):
                     for i in range(1, self._nx):
                         
                         # Вычисление "Зейделевского" значения u_star
-                        num_gs = (u_prev[j, i+1] + u[j, i-1]) / hx2 + (u_prev[j+1, i] + u[j-1, i]) / hy2
-                        u_star = num_gs / denom_gs_sor
+                        num_seidel = (u_prev[j, i+1] + u[j, i-1]) / hx2 + (u_prev[j+1, i] + u[j-1, i]) / hy2
+                        u_star = num_seidel / denom_seidel
 
-                        # Применение формулы SOR (при param=1 это Зейдель)
+                        # формула SOR
                         u[j, i] = (1.0 - param) * u_prev[j, i] + param * u_star
 
                 self._post_solution(u, cur_iter)

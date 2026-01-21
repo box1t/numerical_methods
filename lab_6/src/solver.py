@@ -236,6 +236,6 @@ if __name__ == "__main__":
     visual_paths = {
             'Явная': path_explicit, 
             'Неявная': path_implicit,
-        }   
+        }
     
     visualise_comparison(visual_paths)
